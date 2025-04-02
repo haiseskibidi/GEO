@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест карты OpenLayers</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Инициализация тестовой карты...');
+            
+            // Координаты Приморского края
+            const primorsky = {
+                center: [134.0, 44.6],
+                extent: [130.4, 42.3, 139.0, 48.5]
+            };
+            
+            // Создаем простую карту
+            const map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM()
+                    })
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat(primorsky.center),
+                    zoom: 7
+                })
+            });
+            
+            // Добавляем границу Приморского края
+            const extentFeature = new ol.Feature({
+                geometry: new ol.geom.Polygon([[
+                    ol.proj.fromLonLat([primorsky.extent[0], primorsky.extent[1]]),
+                    ol.proj.fromLonLat([primorsky.extent[0], primorsky.extent[3]]),
+                    ol.proj.fromLonLat([primorsky.extent[2], primorsky.extent[3]]),
+                    ol.proj.fromLonLat([primorsky.extent[2], primorsky.extent[1]]),
+                    ol.proj.fromLonLat([primorsky.extent[0], primorsky.extent[1]])
+                ]])
+            });
+            
+            const vectorLayer = new ol.layer.Vector({
+                source: new ol.source.Vector({
+                    features: [extentFeature]
+                }),
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'blue',
+                        width: 2
+                    })
+                })
+            });
+            
+            map.addLayer(vectorLayer);
+            
+            console.log('Тестовая карта инициализирована');
+        });
+    </script>
+</body>
+</html> 

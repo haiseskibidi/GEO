@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Геопортал мониторинга изменений</title>
+    
+    <!-- OpenLayers CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@7.4.0/ol.css" type="text/css">
+    
+    <!-- Пользовательские стили -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Геопортал мониторинга изменений</h1>
+        </header>
+        
+        <div class="main-content">
+            <!-- Боковая панель с инструментами -->
+            <div class="sidebar" id="sidebar">
+                <h3>Инструменты</h3>
+                
+                <!-- Режимы отображения -->
+                <div class="mode-selector">
+                    <h4>Режим отображения</h4>
+                    <select id="display-mode">
+                        <option value="single">Одиночное изображение</option>
+                        <option value="swipe">Сравнение (шторка)</option>
+                        <option value="opacity">Сравнение (прозрачность)</option>
+                    </select>
+                </div>
+                
+                <!-- Базовые слои карты -->
+                <div class="base-layers">
+                    <h4>Базовый слой</h4>
+                    <div class="base-layer-selector">
+                        <label>
+                            <input type="radio" name="base-layer" value="osm"> OpenStreetMap
+                        </label>
+                        <label>
+                            <input type="radio" name="base-layer" value="satellite" checked> Спутник
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Панель поиска изображений -->
+                <div class="search-panel">
+                    <h4>Поиск изображений</h4>
+                    <div class="date-filter">
+                        <label for="date-from">Дата от:</label>
+                        <input type="date" id="date-from">
+                        
+                        <label for="date-to">Дата до:</label>
+                        <input type="date" id="date-to">
+                    </div>
+                    <button id="search-images">Найти изображения</button>
+                </div>
+                
+                <!-- Список найденных изображений -->
+                <h4>Доступные изображения</h4>
+                <div id="image-list" class="image-list">
+                    <!-- Здесь будут отображаться найденные изображения -->
+                </div>
+                <div id="no-images-message" class="no-images hidden">Изображения не найдены</div>
+                
+                <!-- Элементы управления изображением -->
+                <div class="image-controls">
+                    <h4>Настройки изображения</h4>
+                    
+                    <div class="control-group">
+                        <label for="brightness">Яркость:</label>
+                        <input type="range" id="brightness" min="-1" max="1" step="0.1" value="0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="contrast">Контраст:</label>
+                        <input type="range" id="contrast" min="0" max="2" step="0.1" value="1">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="saturation">Насыщенность:</label>
+                        <input type="range" id="saturation" min="0" max="2" step="0.1" value="1">
+                    </div>
+                    
+                    <div class="control-actions">
+                        <button id="reset-image-settings" class="btn-reset-settings">Сбросить настройки</button>
+                    </div>
+                </div>
+                
+                <!-- Режимы рендеринга -->
+                <div class="rendering-panel">
+                    <h4>Режим рендеринга</h4>
+                    <select id="render-mode">
+                        <option value="natural">Естественный цвет</option>
+                        <option value="color_ir">Цветной ИК</option>
+                        <option value="short_wave_ir">Коротковолновый ИК</option>
+                        <option value="agriculture">Сельское хозяйство</option>
+                        <option value="urban">Городская среда</option>
+                        <option value="ndvi">Индекс вегетации (NDVI)</option>
+                        <option value="temp">Температура поверхности</option>
+                    </select>
+                    <p class="render-mode-description">Отображение в естественных цветах (RGB)</p>
+                </div>
+            </div>
+            
+            <!-- Контейнер карты -->
+            <div class="map-container">
+                <div id="map"></div>
+                
+                <!-- Элементы управления картой -->
+                <div class="map-controls">
+                    <button id="zoom-in" title="Приблизить">+</button>
+                    <button id="zoom-out" title="Отдалить">-</button>
+                    <button id="reset-view" title="Сбросить вид">⟲</button>
+                </div>
+                
+                <!-- Информация о карте -->
+                <div class="map-info">
+                    <div id="mouse-position">Координаты: 0°, 0°</div>
+                    <div id="scale-info">Масштаб: 1:1000000</div>
+                </div>
+                
+                <!-- Контейнер для шторки сравнения -->
+                <div id="swipe-container" class="hidden">
+                    <div class="swipe-controls">
+                        <input type="range" id="swipe" min="0" max="100" value="50">
+                    </div>
+                </div>
+                
+                <!-- Вертикальная шторка -->
+                <div id="vertical-swipe" class="hidden">
+                    <div class="swipe-line"></div>
+                    <div class="swipe-handle" id="swipe-handle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем OpenLayers с другого CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js"></script>
+    
+    <!-- Сначала загружаем конфигурацию -->
+    <script src="js/config.js"></script>
+    
+    <!-- Проверяем, что OpenLayers загружен перед инициализацией приложения -->
+    <script>
+        function initApp() {
+            // Проверяем, загружена ли библиотека OpenLayers
+            if (typeof ol === 'undefined') {
+                console.error('Библиотека OpenLayers не загружена. Повторная попытка через 1 секунду...');
+                setTimeout(initApp, 1000);
+                return;
+            }
+            
+            // Загружаем модули приложения
+            const scripts = [
+                'js/map.js',
+                'js/images.js',
+                'js/controls.js',
+                'js/app.js'
+            ];
+            
+            let loaded = 0;
+            
+            scripts.forEach(src => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    loaded++;
+                    if (loaded === scripts.length) {
+                        console.log('Все скрипты загружены.');
+                        
+                        // Проверяем, что все модули инициализированы
+                        if (typeof App !== 'undefined' && 
+                            typeof MapModule !== 'undefined' && 
+                            typeof ImagesModule !== 'undefined' && 
+                            typeof ControlsModule !== 'undefined') {
+                            // Запускаем приложение
+                            App.init();
+                        } else {
+                            console.error('Не все модули загружены корректно.');
+                        }
+                    }
+                };
+                script.onerror = () => {
+                    console.error(`Ошибка загрузки скрипта: ${src}`);
+                };
+                document.body.appendChild(script);
+            });
+        }
+        
+        // Запускаем инициализацию приложения после полной загрузки страницы
+        window.addEventListener('load', initApp);
+    </script>
+</body>
+</html> 
