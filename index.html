@@ -10,6 +10,14 @@
     
     <!-- Пользовательские стили -->
     <link rel="stylesheet" href="css/main.css">
+    
+    <!-- Подключаем OpenLayers и другие внешние библиотеки заранее -->
+    <script src="https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js"></script>
+    
+    <!-- Отключаем кэширование -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
 <body>
     <div class="app-container">
@@ -138,61 +146,55 @@
         </div>
     </div>
 
-    <!-- Подключаем OpenLayers с другого CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js"></script>
-    
     <!-- Сначала загружаем конфигурацию -->
     <script src="js/config.js"></script>
     
-    <!-- Проверяем, что OpenLayers загружен перед инициализацией приложения -->
+    <!-- Загружаем модули приложения последовательно с проверкой загрузки -->
     <script>
-        function initApp() {
-            // Проверяем, загружена ли библиотека OpenLayers
-            if (typeof ol === 'undefined') {
-                console.error('Библиотека OpenLayers не загружена. Повторная попытка через 1 секунду...');
-                setTimeout(initApp, 1000);
-                return;
-            }
-            
-            // Загружаем модули приложения
-            const scripts = [
-                'js/map.js',
-                'js/images.js',
-                'js/controls.js',
-                'js/app.js'
-            ];
-            
-            let loaded = 0;
-            
-            scripts.forEach(src => {
+        function loadScript(url) {
+            return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = src;
-                script.onload = () => {
-                    loaded++;
-                    if (loaded === scripts.length) {
-                        console.log('Все скрипты загружены.');
-                        
-                        // Проверяем, что все модули инициализированы
-                        if (typeof App !== 'undefined' && 
-                            typeof MapModule !== 'undefined' && 
-                            typeof ImagesModule !== 'undefined' && 
-                            typeof ControlsModule !== 'undefined') {
-                            // Запускаем приложение
-                            App.init();
-                        } else {
-                            console.error('Не все модули загружены корректно.');
-                        }
-                    }
-                };
-                script.onerror = () => {
-                    console.error(`Ошибка загрузки скрипта: ${src}`);
-                };
+                script.src = url;
+                script.async = false; // Важно: загружаем скрипты последовательно
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error(`Не удалось загрузить скрипт: ${url}`));
                 document.body.appendChild(script);
             });
         }
         
-        // Запускаем инициализацию приложения после полной загрузки страницы
-        window.addEventListener('load', initApp);
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Проверяем, загружена ли библиотека OpenLayers
+                if (typeof ol === 'undefined') {
+                    console.log('Загрузка OpenLayers...');
+                    await loadScript('https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js');
+                }
+                
+                // Последовательно загружаем модули приложения
+                console.log('Загрузка модулей приложения...');
+                await loadScript('js/map.js'); 
+                await loadScript('js/images.js');   
+                await loadScript('js/controls.js');
+                await loadScript('js/app.js');
+                
+                console.log('Все скрипты успешно загружены');
+                
+                // Проверяем, что все модули инициализированы
+                if (typeof App !== 'undefined' && 
+                    typeof MapModule !== 'undefined' && 
+                    typeof ImagesModule !== 'undefined' && 
+                    typeof ControlsModule !== 'undefined') {
+                    // Запускаем приложение
+                    console.log('Инициализация приложения...');
+                    App.init();
+                } else {
+                    console.error('Не все модули загружены корректно.');
+                }
+                
+            } catch (error) {
+                console.error('Ошибка при загрузке скриптов:', error);
+            }
+        });
     </script>
 </body>
 </html> 

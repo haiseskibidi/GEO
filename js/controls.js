@@ -250,6 +250,7 @@ const ControlsModule = (function() {
     
     // Публичный API модуля
     return {
-        init: init
+        init: init,
+        resetImageSettings: resetImageSettings
     };
 })(); 

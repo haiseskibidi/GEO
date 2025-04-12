@@ -1,16 +1,3 @@
-"""
-Скрипт для преобразования растровых изображений в формат Cloud Optimized GeoTIFF (COG).
-
-Cloud Optimized GeoTIFF - это формат, который оптимизирован для эффективного доступа
-к данным через HTTP, поддерживающий запросы диапазонов байтов для получения только 
-необходимых частей изображения.
-
-Зависимости:
-- GDAL (>=3.1)
-- rasterio
-- numpy
-"""
-
 import os
 import sys
 import argparse
@@ -29,7 +16,6 @@ except ImportError:
     print("Необходимо установить зависимости: pip install rasterio numpy")
     sys.exit(1)
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -37,7 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger("convert_to_cog")
 
 def validate_inputs(input_path, output_path):
-    """Проверяет существование входного файла и доступность директории для выходного файла."""
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Входной файл не найден: {input_path}")
     
@@ -47,28 +32,17 @@ def validate_inputs(input_path, output_path):
         os.makedirs(output_dir, exist_ok=True)
 
 def reproject_raster(src_path, dst_path, dst_crs=None):
-    """
-    Перепроецирует растр в заданную координатную систему если необходимо.
-    
-    Args:
-        src_path: Путь к исходному растру
-        dst_path: Путь для сохранения результата
-        dst_crs: Целевая система координат (если None, используется исходная)
-    """
     with rasterio.open(src_path) as src:
         src_crs = src.crs
         
-        # Если целевая CRS не указана или совпадает с исходной, просто копируем файл
         if dst_crs is None or src_crs == dst_crs:
             logger.info(f"Перепроецирование не требуется, копирование файла")
             shutil.copy(src_path, dst_path)
             return
         
-        # Вычисляем параметры трансформации
         transform, width, height = calculate_default_transform(
             src_crs, dst_crs, src.width, src.height, *src.bounds)
         
-        # Обновляем метаданные
         kwargs = src.meta.copy()
         kwargs.update({
             'crs': dst_crs,
@@ -77,13 +51,10 @@ def reproject_raster(src_path, dst_path, dst_crs=None):
             'height': height
         })
         
-        # Создаем новый растр с обновленными метаданными
         with rasterio.open(dst_path, 'w', **kwargs) as dst:
             for i in range(1, src.count + 1):
-                # Чтение данных из исходного растра
                 data = src.read(i)
                 
-                # Репроецирование данных
                 reproject(
                     source=data,
                     destination=np.zeros((height, width), dtype=kwargs['dtype']),
@@ -94,7 +65,6 @@ def reproject_raster(src_path, dst_path, dst_crs=None):
                     resampling=Resampling.nearest
                 )[0]
                 
-                # Запись данных в новый растр
                 dst.write(data, i)
         
         logger.info(f"Перепроецирование в {dst_crs} завершено")
@@ -103,29 +73,11 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
                   resampling='nearest', blocksize=256, overview_levels=None, 
                   overview_resampling='nearest', predictor=2, quality=None, 
                   crs=None):
-    """
-    Преобразует растровое изображение в формат Cloud Optimized GeoTIFF (COG).
-    
-    Args:
-        input_path: Путь к входному файлу
-        output_path: Путь для сохранения результата
-        compression: Алгоритм сжатия ('DEFLATE', 'LZW', 'ZSTD', 'JPEG', 'WEBP')
-        resampling: Метод интерполяции для перепроецирования
-        blocksize: Размер блока данных (плитки)
-        overview_levels: Список уровней обзора (напр. [2, 4, 8])
-        overview_resampling: Метод интерполяции для обзоров
-        predictor: Предиктор для сжатия без потерь (1, 2 или 3)
-        quality: Качество для сжатия с потерями (JPEG, WEBP)
-        crs: Целевая система координат
-    """
-    # Проверка входных данных
     validate_inputs(input_path, output_path)
     
-    # Создаем временную директорию для промежуточных файлов
     with tempfile.TemporaryDirectory() as tmpdir:
         temp_file = os.path.join(tmpdir, 'reprojected.tif')
         
-        # Перепроецируем если нужно
         if crs:
             reproject_raster(input_path, temp_file, crs)
             input_raster = temp_file
@@ -134,9 +86,7 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
         
         logger.info(f"Преобразование {input_raster} в Cloud Optimized GeoTIFF")
         
-        # Открываем исходный растр для получения метаданных
         with rasterio.open(input_raster) as src:
-            # Определяем уровни обзора, если не заданы
             if overview_levels is None:
                 max_dimension = max(src.width, src.height)
                 overview_levels = []
@@ -147,7 +97,6 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
             
             logger.info(f"Будут созданы уровни обзора: {overview_levels}")
             
-            # Настраиваем параметры COG
             cog_profile = {
                 'driver': 'GTiff',
                 'blockxsize': blocksize,
@@ -160,11 +109,9 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
                 'interleave': 'PIXEL',
             }
             
-            # Добавляем опции для сжатия с потерями
             if compression in ['JPEG', 'WEBP'] and quality is not None:
                 cog_profile['quality'] = quality
             
-            # Копируем остальные метаданные
             cog_profile.update({
                 'count': src.count,
                 'dtype': src.dtypes[0],
@@ -175,17 +122,13 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
                 'nodata': src.nodata
             })
             
-            # Создаем временный файл с правильной структурой COG
             with MemoryFile() as memfile:
                 with memfile.open(**cog_profile) as tmp:
-                    # Копируем данные из исходного растра
                     tmp.write(src.read())
                     
-                    # Создаем обзоры (пирамиды)
                     resampling_method = getattr(Resampling, overview_resampling)
                     tmp.build_overviews(overview_levels, resampling_method)
                 
-                # Создаем финальный COG файл
                 cog_translate_args = {
                     'dst_path': output_path,
                     'src_path': memfile,
@@ -198,11 +141,9 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
                 if compression in ['JPEG', 'WEBP'] and quality is not None:
                     cog_translate_args['quality'] = quality
                 
-                # Сохраняем результат
                 with memfile.open() as src:
                     with rasterio.open(output_path, 'w', **cog_profile) as dst:
                         dst.write(src.read())
-                        # Копируем маски если есть
                         if src.mask_flag_enums[0] != rasterio.enums.MaskFlags.all_valid:
                             dst.write_mask(src.dataset_mask())
     
@@ -210,15 +151,6 @@ def convert_to_cog(input_path, output_path, compression='DEFLATE',
     return output_path
 
 def batch_process(input_dir, output_dir, pattern="*.tif", **kwargs):
-    """
-    Пакетная обработка всех растров в директории.
-    
-    Args:
-        input_dir: Входная директория
-        output_dir: Выходная директория
-        pattern: Шаблон для выбора файлов
-        **kwargs: Дополнительные параметры для convert_to_cog
-    """
     input_path = Path(input_dir)
     files = list(input_path.glob(pattern))
     
@@ -231,12 +163,10 @@ def batch_process(input_dir, output_dir, pattern="*.tif", **kwargs):
     os.makedirs(output_dir, exist_ok=True)
     
     for file in files:
-        # Создаем имя выходного файла
         rel_path = file.relative_to(input_path)
         output_file = Path(output_dir) / rel_path
         output_file = output_file.with_suffix('.tif')
         
-        # Создаем родительские директории если нужно
         output_file.parent.mkdir(parents=True, exist_ok=True)
         
         try:
@@ -245,7 +175,6 @@ def batch_process(input_dir, output_dir, pattern="*.tif", **kwargs):
             logger.error(f"Ошибка при обработке {file}: {e}")
 
 def main():
-    """Основная функция скрипта."""
     parser = argparse.ArgumentParser(description="Преобразование растров в формат Cloud Optimized GeoTIFF")
     
     input_group = parser.add_mutually_exclusive_group(required=True)
@@ -273,11 +202,9 @@ def main():
     
     args = parser.parse_args()
     
-    # Настройка уровня логирования
     if args.verbose:
         logger.setLevel(logging.DEBUG)
     
-    # Определяем параметры обработки
     kwargs = {
         'compression': args.compression,
         'blocksize': args.blocksize,
@@ -289,10 +216,8 @@ def main():
     
     try:
         if args.input:
-            # Обработка одного файла
             convert_to_cog(args.input, args.output, **kwargs)
         else:
-            # Пакетная обработка
             batch_process(args.directory, args.output, pattern=args.pattern, **kwargs)
         
         logger.info("Обработка завершена успешно")

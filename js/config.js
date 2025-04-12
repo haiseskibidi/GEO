@@ -1,83 +1,53 @@
-/**
- * Файл конфигурации геопортала
- */
 const config = {
-    /**
-     * Настройки карты
-     */
     map: {
-        center: [134.0, 44.6], // Центр Приморского края
+        center: [134.0, 44.6],
         zoom: 7,
         minZoom: 5,
         maxZoom: 18,
-        projection: 'EPSG:3857', // Web Mercator
-        // Границы Приморского края (примерные)
-        extent: [130.4, 42.3, 139.0, 48.5] // [мин. долгота, мин. широта, макс. долгота, макс. широта]
+        projection: 'EPSG:3857',
+        extent: [130.4, 42.3, 139.0, 48.5]
     },
     
-    /**
-     * Базовые слои карты
-     */
     baseLayers: [
         {
             id: 'osm',
             name: 'OpenStreetMap',
-            visible: false, // По умолчанию не активен
+            visible: false,
             type: 'tile',
             source: 'osm'
         },
         {
             id: 'satellite',
             name: 'Спутник',
-            visible: true, // Спутниковый вид по умолчанию
+            visible: true,
             type: 'tile',
             source: 'satellite'
         }
+    
     ],
     
-    /**
-     * API и сервисы
-     */
     services: {
-        // В демо версии используем локальные файлы вместо реального API
         imagesAPI: 'data/images.json'
     },
     
-    /**
-     * Настройки тестовых изображений
-     */
     images: {
-        // Базовый URL для тестовых изображений
-        baseUrl: 'data/',
-        thumbnailsUrl: 'data/thumbnails/'
+        baseUrl: 'data/'
     },
     
-    /**
-     * Допустимые расширения файлов изображений
-     */
     validExtensions: ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.jp2'],
     
-    /**
-     * Настройки интерфейса
-     */
     ui: {
-        // Максимальное количество изображений на странице
         maxImagesPerPage: 10,
         
-        // Режимы отображения
         displayModes: [
             {id: 'single', name: 'Одиночное изображение'},
             {id: 'swipe', name: 'Сравнение (шторка)'},
             {id: 'opacity', name: 'Сравнение (прозрачность)'}
         ],
         
-        // Показывать предупреждение о тестовых данных
         showTestDataWarning: true
     },
     
-    /**
-     * Режимы рендеринга для спутниковых изображений
-     */
     renderModes: [
         {
             id: 'natural',
@@ -159,16 +129,16 @@ const config = {
         }
     ],
     
-    /**
-     * Дополнительные параметры для отладки
-     */
     debug: {
         enabled: true,
-        logLevel: 'info' // 'info', 'warning', 'error', 'debug'
+        logLevel: 'info'
     }
 };
 
-// Экспорт объекта конфигурации
+// Флаг успешной загрузки конфигурации
+window.configLoaded = true;
+console.log('[DEBUG] Конфигурация успешно загружена');
+
 if (typeof module !== 'undefined') {
     module.exports = config;
-} 
+}
