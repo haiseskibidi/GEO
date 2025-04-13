@@ -10,9 +10,10 @@ const App = (function() {
     }
     
     function setupDefaultDates() {
+        console.log('[DEBUG] Установка дат по умолчанию...');
+        
         const today = new Date();
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(today.getMonth() - 1);
+        const startDate = new Date(2015, 0, 1); // 1 января 2015 года
         
         const formatDate = (date) => {
             const year = date.getFullYear();
@@ -21,8 +22,24 @@ const App = (function() {
             return `${year}-${month}-${day}`;
         };
         
-        document.getElementById('date-from').value = formatDate(oneMonthAgo);
-        document.getElementById('date-to').value = formatDate(today);
+        const dateFromElement = document.getElementById('date-from');
+        const dateToElement = document.getElementById('date-to');
+        
+        if (!dateFromElement) {
+            console.error('[ERROR] Элемент date-from не найден!');
+            return;
+        }
+        
+        if (!dateToElement) {
+            console.error('[ERROR] Элемент date-to не найден!');
+            return;
+        }
+        
+        // Устанавливаем даты с проверкой
+        dateFromElement.value = formatDate(startDate);
+        dateToElement.value = formatDate(today);
+        
+        console.log('[DEBUG] Даты установлены:', dateFromElement.value, dateToElement.value);
     }
     
     return {

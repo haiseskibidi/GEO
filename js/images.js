@@ -10,104 +10,47 @@ const ImagesModule = (function() {
         console.log('Поиск изображений с параметрами:', params);
         
         return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                const testImages = [
-                    {
-                        id: 'img_2023_09_15',
-                        name: 'Снимок от 15.09.2023',
-                        date: '2023-09-15',
-                        url: 'data/img/sample_image_1.jpg',
-                        cloudCoverage: 5,
-                        extent: [131.5, 42.8, 132.5, 43.8],
-                        sensor: 'Landsat 8'
-                    },
-                    {
-                        id: 'img_2023_08_20',
-                        name: 'Снимок от 20.08.2023',
-                        date: '2023-08-20',
-                        url: 'data/img/sample_image_2.jpg',
-                        cloudCoverage: 22,
-                        extent: [131.9, 43.6, 132.6, 44.3],
-                        sensor: 'Landsat 8'
-                    },
-                    {
-                        id: 'img_2023_07_12',
-                        name: 'Снимок от 12.07.2023',
-                        date: '2023-07-12',
-                        url: 'data/img/sample_image_3.jpg',
-                        cloudCoverage: 45,
-                        extent: [132.7, 42.6, 133.2, 43.0],
-                        sensor: 'Landsat 8'
-                    },
-                    {
-                        id: 'img_2023_06_30',
-                        name: 'Снимок от 30.06.2023',
-                        date: '2023-06-30',
-                        url: 'data/img/sample_image_4.jpg',
-                        cloudCoverage: 0,
-                        extent: [132.0, 43.2, 132.5, 43.7],
-                        sensor: 'Landsat 8'
-                    },
-                    {
-                        id: 'img_2023_05_15',
-                        name: 'Снимок от 15.05.2023',
-                        date: '2023-05-15',
-                        url: 'data/img/sample_image_5.jpg',
-                        cloudCoverage: 78,
-                        extent: [132.3, 43.0, 132.8, 43.5],
-                        sensor: 'Landsat 8'
-                    },
-                    {
-                        id: 'img_2024_01_20',
-                        name: 'Снимок от 20.01.2024',
-                        date: '2024-01-20',
-                        url: 'data/img/sample_image_6.jpg',
-                        cloudCoverage: 15,
-                        extent: [135.0, 44.3, 135.5, 44.8],
-                        sensor: 'Landsat 9'
-                    },
-                    {
-                        id: 'img_2024_02_15',
-                        name: 'Снимок от 15.02.2024',
-                        date: '2024-02-15',
-                        url: 'data/img/sample_image_7.jpg',
-                        cloudCoverage: 85,
-                        extent: [135.2, 43.7, 135.7, 44.2],
-                        sensor: 'Landsat 9'
-                    },
-                    {
-                        id: 'img_2024_03_05',
-                        name: 'Снимок от 05.03.2024',
-                        date: '2024-03-05',
-                        url: 'data/img/sample_image_8.jpg',
-                        cloudCoverage: 30,
-                        extent: [132.9, 43.0, 133.4, 43.5],
-                        sensor: 'Landsat 9'
+            // Загружаем JSON с информацией о снимках
+            fetch('data/img/images.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Не удалось загрузить данные о снимках.');
                     }
-                ];
-                
-                let filteredImages = testImages;
-                
-                if (params.dateFrom) {
-                    const dateFrom = new Date(params.dateFrom);
-                    filteredImages = filteredImages.filter(img => new Date(img.date) >= dateFrom);
-                }
-                
-                if (params.dateTo) {
-                    const dateTo = new Date(params.dateTo);
-                    filteredImages = filteredImages.filter(img => new Date(img.date) <= dateTo);
-                }
-                
-                if (params.cloudCoverage !== undefined) {
-                    const maxCloud = parseInt(params.cloudCoverage);
-                    filteredImages = filteredImages.filter(img => img.cloudCoverage <= maxCloud);
-                }
-                
-                filteredImages.sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                availableImages = filteredImages;
-                resolve(filteredImages);
-            }, 500);
+                    return response.json();
+                })
+                .then(data => {
+                    // Получаем массив снимков из JSON
+                    const realImages = data.images;
+
+                    // Фильтруем снимки по параметрам поиска
+                    let filteredImages = realImages;
+                    
+                    if (params.dateFrom) {
+                        const dateFrom = new Date(params.dateFrom);
+                        filteredImages = filteredImages.filter(img => new Date(img.date) >= dateFrom);
+                    }
+                    
+                    if (params.dateTo) {
+                        const dateTo = new Date(params.dateTo);
+                        filteredImages = filteredImages.filter(img => new Date(img.date) <= dateTo);
+                    }
+                    
+                    if (params.cloudCoverage !== undefined) {
+                        const maxCloud = parseInt(params.cloudCoverage);
+                        filteredImages = filteredImages.filter(img => img.cloudCoverage <= maxCloud);
+                    }
+                    
+                    filteredImages.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
+                    availableImages = filteredImages;
+                    resolve(filteredImages);
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке снимков:', error);
+                    // В случае ошибки возвращаем пустой массив
+                    availableImages = [];
+                    resolve([]);
+                });
         });
     }
     
@@ -135,15 +78,13 @@ const ImagesModule = (function() {
             imageElement.dataset.id = image.id;
             
             imageElement.innerHTML = `
-                <div class="image-thumbnail">
-                    <img src="${image.url}" alt="${image.name}">
-                </div>
                 <div class="image-content">
                     <div class="image-name">${image.name}</div>
                     <div class="image-date">${formatDate(image.date)}</div>
                     <div class="image-info">
                         <span>Облачность: ${image.cloudCoverage}%</span>
                         <span>Сенсор: ${image.sensor}</span>
+                        <span>Файл: ${image.url.split('/').pop()}</span>
                     </div>
                     <div class="image-actions">
                         <button class="btn-select-image" data-action="select1" title="Выбрать как основное изображение">

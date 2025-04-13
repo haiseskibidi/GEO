@@ -196,7 +196,7 @@ const MapModule = (function() {
             // Показываем индикатор загрузки
             showLoading(true);
             
-            // Для тестовых целей - проверяем наличие изображения
+            // Проверяем наличие URL изображения
             let imageUrl = imageData.url;
             
             if (!imageUrl) {
@@ -208,19 +208,34 @@ const MapModule = (function() {
             // Создаем функцию загрузки изображения с обработкой ошибок
             const loadImage = () => {
                 try {
-                    // Создаем источник изображения
-                    const source = new ol.source.ImageStatic({
-                        url: imageUrl,
-                        imageExtent: ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857'),
-                        projection: 'EPSG:3857',
-                        crossOrigin: 'anonymous' // Разрешаем кросс-доменные запросы
-                    });
+                    let source;
+                    
+                    // Проверяем расширение файла
+                    if (imageUrl.toLowerCase().endsWith('.tif') || imageUrl.toLowerCase().endsWith('.tiff')) {
+                        // Для GeoTIFF файлов используем специальный источник данных
+                        console.log('[DEBUG] Загрузка GeoTIFF:', imageUrl);
+                        
+                        // Для GeoTIFF используем ImageStatic с предопределенным экстентом
+                        source = new ol.source.ImageStatic({
+                            url: imageUrl,
+                            imageExtent: ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857'),
+                            projection: 'EPSG:3857'
+                        });
+                    } else {
+                        // Для других форматов используем стандартный источник
+                        source = new ol.source.ImageStatic({
+                            url: imageUrl,
+                            imageExtent: ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857'),
+                            projection: 'EPSG:3857',
+                            crossOrigin: 'anonymous'
+                        });
+                    }
                     
                     // Обработчик ошибок при загрузке
                     source.on('imageloaderror', function() {
                         console.error(`Ошибка загрузки изображения: ${imageUrl}`);
                         showLoading(false);
-                        alert('Не удалось загрузить изображение. Пожалуйста, убедитесь, что вы запустили скрипт для создания тестовых изображений.');
+                        alert('Не удалось загрузить изображение. Пожалуйста, убедитесь, что файл существует и доступен.');
                     });
                     
                     // Обработчик успешной загрузки
@@ -230,11 +245,11 @@ const MapModule = (function() {
                     
                     // Создаем слой изображения
                     const layer = new ol.layer.Image({
-                        title: imageData.title || 'Спутниковое изображение',
+                        title: imageData.name || 'Спутниковое изображение',
                         source: source,
-                        opacity: 0.9, // Немного прозрачности для лучшей видимости на фоне карты
+                        opacity: 0.9,
                         visible: true,
-                        zIndex: 10 // Выше базовых слоев
+                        zIndex: 10
                     });
                     
                     // Удаляем предыдущий слой, если он существует
@@ -279,21 +294,10 @@ const MapModule = (function() {
             
             // Проверяем существование изображения
             if (!imageExists(imageUrl)) {
-                console.warn(`Изображение ${imageUrl} не найдено, возможно вам нужно запустить скрипт генерации тестовых изображений`);
-                
-                // Пробуем найти другие изображения в той же директории
-                const fileName = imageUrl.split('/').pop();
-                const baseUrl = imageUrl.substring(0, imageUrl.lastIndexOf('/') + 1);
-                
-                // Проверяем наличие файла с другим расширением
-                for (const ext of config.validExtensions) {
-                    const newUrl = baseUrl + fileName.replace(/\.[^/.]+$/, ext);
-                    if (imageExists(newUrl)) {
-                        imageUrl = newUrl;
-                        console.log(`Найден альтернативный файл: ${imageUrl}`);
-                        break;
-                    }
-                }
+                console.warn(`Изображение ${imageUrl} не найдено или имеет неподдерживаемый формат`);
+                showLoading(false);
+                alert(`Изображение ${imageUrl.split('/').pop()} не найдено или имеет неподдерживаемый формат`);
+                return;
             }
             
             // Загружаем изображение
