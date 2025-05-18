@@ -84,7 +84,6 @@ const ImagesModule = (function() {
                     <div class="image-info">
                         <span>Облачность: ${image.cloudCoverage}%</span>
                         <span>Сенсор: ${image.sensor}</span>
-                        <span>Файл: ${image.url.split('/').pop()}</span>
                     </div>
                     <div class="image-actions">
                         <button class="btn-select-image" data-action="select1" title="Выбрать как основное изображение">
@@ -94,6 +93,11 @@ const ImagesModule = (function() {
                             Сравнение
                         </button>
                     </div>
+                    <div class="remove-btn-container" style="display: none; margin-top: 5px;">
+                        <button class="btn-select-image btn-remove-second" data-action="remove2" title="Убрать из сравнения" style="background-color: var(--danger-color); width: 100%;">
+                            Удалить из сравнения
+                        </button>
+                    </div>
                 </div>
             `;
             
@@ -101,6 +105,7 @@ const ImagesModule = (function() {
             
             const selectBtn1 = imageElement.querySelector('button[data-action="select1"]');
             const selectBtn2 = imageElement.querySelector('button[data-action="select2"]');
+            const removeBtn = imageElement.querySelector('button[data-action="remove2"]');
             
             selectBtn1.addEventListener('click', () => {
                 selectImage(image);
@@ -109,7 +114,14 @@ const ImagesModule = (function() {
             selectBtn2.addEventListener('click', () => {
                 selectSecondImage(image);
             });
+            
+            removeBtn.addEventListener('click', () => {
+                removeSecondImage();
+            });
         });
+        
+        // Обновляем видимость кнопок удаления
+        updateSelectedImageUI();
     }
     
     function selectImage(image) {
@@ -137,6 +149,12 @@ const ImagesModule = (function() {
         imageItems.forEach(item => {
             item.classList.remove('selected');
             item.classList.remove('second-selected');
+            
+            // Скрываем кнопку удаления на всех элементах
+            const removeBtnContainer = item.querySelector('.remove-btn-container');
+            if (removeBtnContainer) {
+                removeBtnContainer.style.display = 'none';
+            }
         });
         
         if (selectedImage) {
@@ -150,8 +168,100 @@ const ImagesModule = (function() {
             const secondSelectedItem = document.querySelector(`.image-item[data-id="${secondSelectedImage.id}"]`);
             if (secondSelectedItem) {
                 secondSelectedItem.classList.add('second-selected');
+                
+                // Показываем кнопку удаления только для второго выбранного изображения
+                const removeBtnContainer = secondSelectedItem.querySelector('.remove-btn-container');
+                if (removeBtnContainer) {
+                    removeBtnContainer.style.display = 'block';
+                }
             }
         }
+    }
+    
+    /**
+     * Удаляет второе изображение из сравнения
+     */
+    function removeSecondImage() {
+        console.log('Удаление второго изображения из сравнения');
+        
+        if (!secondSelectedImage) {
+            console.log('Второе изображение не выбрано, нечего удалять');
+            return;
+        }
+        
+        // Сохраняем ссылку на текущий режим отображения перед удалением
+        const currentDisplayMode = MapModule.getCurrentMode();
+        
+        // Получаем слой второго изображения и удаляем его с карты
+        const map = MapModule.getMap();
+        const secondLayer = MapModule.getSecondImageLayer();
+        
+        if (secondLayer) {
+            console.log('[DEBUG] Удаляем слой второго изображения с карты');
+            map.removeLayer(secondLayer);
+        }
+        
+        // Сбрасываем ссылку на второе изображение
+        secondSelectedImage = null;
+        
+        // Явно сообщаем модулю карты, что второй слой удален
+        MapModule.resetSecondImageLayer();
+        
+        // Переключаемся в режим одиночного изображения
+        if (currentDisplayMode !== 'single') {
+            const displayModeSelect = document.getElementById('display-mode');
+            if (displayModeSelect) {
+                displayModeSelect.value = 'single';
+            }
+            MapModule.setMode('single');
+        }
+        
+        // Обновляем UI
+        updateSelectedImageUI();
+        
+        return true;
+    }
+    
+    /**
+     * Удаляет все выбранные изображения с карты
+     */
+    function removeAllImages() {
+        console.log('Удаление всех изображений с карты');
+        
+        // Получаем карту
+        const map = MapModule.getMap();
+        
+        // Удаляем второе изображение, если оно выбрано
+        if (secondSelectedImage) {
+            // Получаем второй слой и удаляем его с карты
+            const secondLayer = MapModule.getSecondImageLayer();
+            if (secondLayer) {
+                map.removeLayer(secondLayer);
+            }
+            // Сбрасываем ссылку на второе изображение
+            secondSelectedImage = null;
+            // Сообщаем модулю карты, что второй слой удален
+            MapModule.resetSecondImageLayer();
+        }
+        
+        // Удаляем основное изображение, если оно выбрано
+        if (selectedImage) {
+            // Так как у нас нет прямого метода для получения основного слоя,
+            // мы просто сбрасываем ссылку на изображение в нашем модуле
+            selectedImage = null;
+        }
+        
+        // Переключаемся в режим одиночного изображения
+        const displayModeSelect = document.getElementById('display-mode');
+        if (displayModeSelect) {
+            displayModeSelect.value = 'single';
+        }
+        MapModule.setMode('single');
+        
+        // Обновляем UI
+        updateSelectedImageUI();
+        
+        return true;
     }
     
     return {
@@ -159,7 +269,10 @@ const ImagesModule = (function() {
         renderImageList: renderImageList,
         selectImage: selectImage,
         selectSecondImage: selectSecondImage,
+        removeSecondImage: removeSecondImage,
+        removeAllImages: removeAllImages,
         getSelectedImage: function() { return selectedImage; },
-        getSecondSelectedImage: function() { return secondSelectedImage; }
+        getSecondSelectedImage: function() { return secondSelectedImage; },
+        updateSelectedImageUI: updateSelectedImageUI
     };
 })(); 

@@ -1,4 +1,22 @@
-/* Общие стили */
+/* Тёмная тема и общие стили */
+:root {
+    --bg-dark: #121212;
+    --bg-dark-accent: #1e1e1e;
+    --bg-dark-lighter: #2a2a2a;
+    --text-light: #e0e0e0;
+    --text-light-secondary: #aaaaaa;
+    --accent-color: #4dabf7;
+    --accent-color-hover: #74c0f9;
+    --danger-color: #e74c3c;
+    --danger-color-hover: #c0392b;
+    --success-color: #2ecc71;
+    --border-radius: 4px;
+    --panel-height: 220px;
+    --header-height: 50px;
+    --panel-collapsed-height: 40px;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -8,7 +26,13 @@
 body, html {
     height: 100%;
     width: 100%;
-    font-family: Arial, sans-serif;
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+}
+
+.dark-theme {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
 }
 
 .app-container {
@@ -20,153 +44,422 @@ body, html {
 
 /* Заголовок */
 header {
-    background-color: #2c3e50;
-    color: white;
-    padding: 10px 20px;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    padding: 0 20px;
+    height: var(--header-height);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: var(--shadow);
+    z-index: 10;
 }
 
 header h1 {
-    font-size: 1.5rem;
-}
-
-/* Кнопка переключения боковой панели */
-.tools-toggle button {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.5rem;
-    cursor: pointer;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s, transform 0.3s;
-}
-
-.tools-toggle button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
+    font-size: 1.3rem;
+    font-weight: 500;
 }
 
 /* Основной контент */
 .main-content {
     display: flex;
+    flex-direction: column;
     flex: 1;
-    height: calc(100% - 60px);
     position: relative;
+    height: calc(100% - var(--header-height));
+}
+
+/* Контейнер карты */
+.map-container {
+    flex-grow: 1;
+    position: relative;
+    height: calc(100% - var(--panel-height));
+    background-color: #ffffff;
+    transition: height 0.3s ease;
+}
+
+/* Когда панель свёрнута */
+.bottom-panel.collapsed ~ .map-container {
+    height: calc(100% - var(--panel-collapsed-height));
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+/* Горизонтальная панель снизу */
+.bottom-panel {
+    position: relative;
+    height: var(--panel-height);
+    background-color: var(--bg-dark-accent);
+    color: var(--text-light);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 5;
+    transition: height 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.bottom-panel.collapsed {
+    height: var(--panel-collapsed-height);
+}
+
+/* Кнопка сворачивания/разворачивания панели */
+.panel-toggle {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: var(--bg-dark-accent);
+    border: none;
+    color: var(--text-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 6;
+    transition: background-color 0.2s;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.panel-toggle:hover {
+    background-color: var(--bg-dark-lighter);
+}
+
+/* Содержимое панели */
+.panel-content {
+    display: flex;
+    height: 100%;
     overflow: hidden;
 }
 
-/* Боковая панель */
-.sidebar {
-    width: 300px;
-    min-width: 300px;
-    background-color: #ecf0f1;
-    padding: 15px;
-    overflow-y: auto;
+/* Скрытие контента когда панель свёрнута */
+.bottom-panel.collapsed .panel-content {
+    display: none;
+}
+
+/* Общие стили для элементов формы */
+h4 {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+/* Контрольные секции */
+.control-sections {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 65%;
+    padding: 10px;
+    gap: 8px;
     height: 100%;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    z-index: 2;
-    /* Фиксированная панель, всегда видима */
+    overflow: visible;
 }
 
-.sidebar h3 {
-    margin-bottom: 15px;
-    color: #34495e;
-    font-size: 1.1rem;
+.control-section {
+    background-color: var(--bg-dark-lighter);
+    border-radius: var(--border-radius);
+    padding: 8px;
+    flex: 1;
+    min-width: 0; /* Позволяет элементам быть меньше их содержимого */
+    display: flex;
+    flex-direction: column;
 }
 
-.sidebar h4 {
-    margin: 10px 0;
-    color: #34495e;
-    font-size: 1rem;
+/* Элементы управления */
+select, input[type="date"], input[type="text"], input[type="number"] {
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    border: 1px solid #444;
+    padding: 4px 6px;
+    border-radius: var(--border-radius);
+    outline: none;
+    transition: border-color 0.2s;
+    font-size: 0.85rem;
+    max-width: 100%;
 }
 
-.mode-selector {
-    margin-bottom: 20px;
+select:focus, input:focus {
+    border-color: var(--accent-color);
 }
 
-.mode-btn {
-    background-color: #bdc3c7;
+/* Кнопки */
+.btn-action {
+    background-color: var(--accent-color);
+    color: white;
     border: none;
-    padding: 8px 15px;
-    margin-right: 5px;
-    border-radius: 4px;
+    padding: 6px 10px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.btn-small {
+    padding: 3px 7px;
+    font-size: 0.8rem;
+}
+
+.btn-action:hover {
+    background-color: var(--accent-color-hover);
+}
+
+.btn-reset-settings {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    margin-top: 8px;
+    align-self: flex-end;
+    font-size: 0.75rem;
+    padding: 3px 6px;
+    border-radius: var(--border-radius);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
-.mode-btn.active {
-    background-color: #3498db;
-    color: white;
+.btn-reset-settings:hover {
+    background-color: var(--danger-color-hover);
 }
 
-.search-panel {
-    margin-bottom: 20px;
-}
-
-.date-filter {
-    margin-bottom: 15px;
-}
-
-.date-filter label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-}
-
-.date-filter input {
-    width: 100%;
-    padding: 8px;
+/* Группы элементов управления */
+.control-group {
     margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    position: relative;
 }
 
-#search-images {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 8px 15px;
+/* Радио кнопки базовых слоев */
+.base-layer-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+    background-color: var(--bg-dark);
+    padding: 8px;
+    border-radius: var(--border-radius);
+}
+
+.base-layer-selector h4 {
     width: 100%;
+    margin-bottom: 8px;
+    color: var(--accent-color);
+    font-size: 0.95rem;
+}
+
+.base-layer-selector input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 5px;
+    vertical-align: middle;
     cursor: pointer;
-    border-radius: 4px;
+    accent-color: var(--accent-color);
+}
+
+.base-layer-selector label {
+    font-size: 0.9rem;
+    margin-right: 15px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 0;
+}
+
+.base-layer-selector label:hover {
+    color: var(--accent-color);
+}
+
+/* Выделение выбранной метки */
+.base-layer-selector input[type="radio"]:checked + label {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* Режимы отображения */
+.mode-selector {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: nowrap;
+    margin-top: 10px;
+}
+
+.mode-selector h4 {
+    margin: 0;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.mode-selector select {
+    flex: 1;
+    min-width: 0;
+}
+
+.mode-selector button {
+    flex-shrink: 0;
+    background-color: var(--danger-color);
+}
+
+.mode-selector button:hover {
+    background-color: var(--danger-color-hover);
+}
+
+/* Поиск */
+.search-panel .date-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+.search-panel input[type="date"] {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+}
+
+/* Слайдеры настроек изображения */
+.sliders-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    overflow: visible;
+}
+
+.sliders-container .control-group {
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sliders-container label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    flex: 1;
+    min-width: 0;
+    height: 5px;
+    background: var(--bg-dark);
+    border-radius: 3px;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+input[type="range"]:hover {
+    opacity: 1;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+/* Стили для отображения значений слайдеров */
+.sliders-container span {
+    width: 30px;
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--text-light-secondary);
+}
+
+/* Стили для элемента выбора цвета */
+.color-picker-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.color-picker-group input[type="color"] {
+    width: 30px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #444;
+    border-radius: var(--border-radius);
+    background: none;
+    cursor: pointer;
+}
+
+.color-picker-group button {
+    margin-left: 5px;
+}
+
+/* Список изображений */
+.image-list-container {
+    width: 35%;
+    background-color: var(--bg-dark-lighter);
+    border-radius: var(--border-radius);
+    margin: 10px 10px 10px 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .image-list {
-    max-height: 200px;
+    flex: 1;
     overflow-y: auto;
-    border: 1px solid #ddd;
+    border: 1px solid #444;
+    border-radius: var(--border-radius);
+    background-color: var(--bg-dark);
     padding: 5px;
-    margin-top: 5px;
-    border-radius: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+    align-content: flex-start;
 }
 
 .no-images {
-    padding: 15px;
+    padding: 10px;
     text-align: center;
-    color: #666;
+    color: var(--text-light-secondary);
     font-style: italic;
+    font-size: 0.9rem;
+    width: 100%;
 }
 
 /* Стили для миниатюр изображений */
 .image-item {
     display: flex;
-    background-color: #f9f9f9;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    border: 1px solid #ddd;
+    background-color: var(--bg-dark-lighter);
+    padding: 8px;
+    margin-bottom: 0;
+    border-radius: var(--border-radius);
+    border: 1px solid #444;
     transition: background-color 0.2s;
+    width: calc(50% - 4px);
+    box-sizing: border-box;
 }
 
 .image-item:hover {
-    background-color: #f0f0f0;
+    background-color: #333;
 }
 
 .image-item.selected {
@@ -187,203 +480,99 @@ header h1 {
 
 .image-name {
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
+    color: var(--text-light);
+    font-size: 0.9rem;
 }
 
 .image-date {
-    font-size: 0.9em;
-    color: #666;
-    margin-bottom: 5px;
+    font-size: 0.8em;
+    color: var(--text-light-secondary);
+    margin-bottom: 3px;
 }
 
 .image-info {
     display: flex;
-    justify-content: space-between;
-    font-size: 0.8em;
-    color: #666;
-    margin-bottom: 8px;
+    justify-content: flex-start;
+    gap: 10px;
+    font-size: 0.75em;
+    color: var(--text-light-secondary);
+    margin-bottom: 5px;
+    flex-wrap: wrap;
 }
 
 .image-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 /* Стили для кнопок выбора изображения */
 .btn-select-image {
-    padding: 5px 10px;
+    padding: 3px 8px;
     border: none;
-    border-radius: 3px;
-    background-color: #e0e0e0;
-    color: #333;
-    font-size: 0.9em;
+    border-radius: var(--border-radius);
+    background-color: var(--bg-dark-lighter);
+    color: var(--text-light);
+    font-size: 0.8em;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .btn-select-image:hover {
-    background-color: #d0d0d0;
+    background-color: #444;
 }
 
 .btn-select-image[data-action="select1"] {
-    background-color: #4CAF50;
+    background-color: var(--success-color);
     color: white;
 }
 
 .btn-select-image[data-action="select1"]:hover {
-    background-color: #3f9142;
+    background-color: #27ae60;
 }
 
 .btn-select-image[data-action="select2"] {
-    background-color: #2196F3;
+    background-color: var(--accent-color);
     color: white;
 }
 
 .btn-select-image[data-action="select2"]:hover {
-    background-color: #0b7dda;
+    background-color: var(--accent-color-hover);
 }
 
-.image-controls .control-group {
-    margin-bottom: 10px;
-}
-
-.image-controls label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-}
-
-.image-controls input[type="range"] {
+.remove-btn-container {
     width: 100%;
 }
 
-/* Стили для кнопки сброса настроек */
-.control-actions {
-    margin-top: 15px;
-    text-align: center;
-}
-
-.btn-reset-settings {
-    background-color: #e74c3c;
+.btn-select-image[data-action="remove2"] {
+    background-color: var(--danger-color);
     color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background-color 0.2s;
-}
-
-.btn-reset-settings:hover {
-    background-color: #c0392b;
-}
-
-/* Стили для панели режимов рендеринга */
-.rendering-panel {
-    margin-bottom: 20px;
-    padding: 10px;
-    margin-top: 15px;
-    background-color: #f5f5f5;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-}
-
-.rendering-panel h4 {
-    color: #2c3e50;
-    margin-bottom: 10px;
-}
-
-.rendering-panel select {
+    font-weight: bold;
     width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: white;
+    text-align: center;
+    padding: 5px 8px;
 }
 
-.render-mode-description {
-    font-size: 0.85rem;
-    color: #666;
-    font-style: italic;
-    margin-top: 5px;
-    line-height: 1.3;
+.btn-select-image[data-action="remove2"]:hover {
+    background-color: var(--danger-color-hover);
 }
 
-/* Контейнер карты */
-.map-container {
-    flex-grow: 1;
-    position: relative;
-    height: 100%;
-}
-
-#map {
-    height: 100%;
-    width: 100%;
-}
-
-/* Элементы управления картой */
-.map-controls {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 5px;
-    border-radius: 4px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.map-controls button {
-    display: block;
-    width: 30px;
-    height: 30px;
-    margin-bottom: 5px;
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1.2rem;
-    cursor: pointer;
-}
-
-.map-controls button:hover {
-    background-color: #f0f0f0;
-}
-
-/* Информация о карте */
-.map-info {
-    position: absolute;
-    bottom: 35px;
-    left: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 5px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.map-info div {
-    margin: 3px 0;
-}
-
-/* Контейнер шторки */
+/* Шторка сравнения */
 #swipe-container {
     position: absolute;
-    bottom: 50px;
+    bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
     width: 70%;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: var(--bg-dark-accent);
     padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    z-index: 4;
 }
 
 #swipe-container.hidden {
     display: none;
-}
-
-.swipe-controls input {
-    width: 100%;
 }
 
 /* Вертикальная шторка */
@@ -392,10 +581,10 @@ header h1 {
     top: 0;
     left: 50%;
     height: 100%;
-    width: 2px; /* Тонкая линия */
-    background-color: rgba(255, 255, 255, 0.8);
+    width: 2px;
+    background-color: var(--accent-color);
     z-index: 100;
-    pointer-events: none; /* Чтобы линия не мешала взаимодействию с картой */
+    pointer-events: none;
 }
 
 .swipe-handle {
@@ -403,36 +592,82 @@ header h1 {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 40px; /* Увеличенный размер элемента */
-    height: 40px; /* Увеличенный размер элемента */
-    background-color: #3498db;
-    border: 3px solid #fff;
+    width: 30px;
+    height: 30px;
+    background-color: var(--accent-color);
+    border: 2px solid #fff;
     border-radius: 50%;
     z-index: 101;
     cursor: col-resize;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow);
 }
 
-/* Общие служебные классы */
+/* Скрытые элементы */
 .hidden {
     display: none;
 }
 
-/* Стили для индикатора загрузки */
+/* Элементы управления картой */
+.map-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--bg-dark-accent);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    z-index: 4;
+}
+
+.map-controls button {
+    display: block;
+    width: 36px;
+    height: 36px;
+    margin: 5px;
+    background-color: var(--bg-dark-accent);
+    border: none;
+    color: var(--text-light);
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.map-controls button:hover {
+    background-color: var(--bg-dark-lighter);
+}
+
+/* Информация о карте */
+.map-info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: var(--bg-dark-accent);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    font-size: 0.8rem;
+    box-shadow: var(--shadow);
+    z-index: 4;
+}
+
+.map-info div {
+    margin: 3px 0;
+    color: var(--text-light-secondary);
+}
+
+/* Индикатор загрузки */
 .loading-spinner {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
+    background-color: var(--bg-dark-accent);
+    color: var(--text-light);
     padding: 15px 30px;
-    border-radius: 5px;
+    border-radius: var(--border-radius);
     z-index: 1000;
     font-weight: bold;
     display: none;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    animation: pulse 1.5s infinite;
+    box-shadow: var(--shadow);
 }
 
 @keyframes pulse {
@@ -441,34 +676,52 @@ header h1 {
     100% { opacity: 0.7; }
 }
 
-/* Стили для переключателя базовых слоев */
-.base-layers {
-    margin-bottom: 20px;
+/* Стили для OpenLayers */
+.ol-control button {
+    background-color: var(--bg-dark-accent) !important;
 }
 
-.base-layer-selector {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 8px;
+.ol-control button:hover {
+    background-color: var(--bg-dark-lighter) !important;
 }
 
-.base-layer-selector label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 5px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+/* Стиль для индикации процесса настройки изображения */
+.adjusting-settings .map-container {
+    cursor: progress;
 }
 
-.base-layer-selector label:hover {
-    background-color: #e0e0e0;
+.adjusting-settings .image-controls {
+    opacity: 0.8;
 }
 
-.base-layer-selector input[type="radio"] {
-    margin-right: 8px;
+/* Анимация для указания, что изображение обрабатывается */
+@keyframes processing-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(77, 171, 247, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(77, 171, 247, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(77, 171, 247, 0); }
 }
 
-/* Стили для полупрозрачной кнопки скрытия панели */
-/* Удаляем все стили, связанные с переключением сайдбара */ 
+.adjusting-settings #map {
+    animation: processing-pulse 1.5s infinite;
+}
+
+/* Адаптация для маленьких экранов */
+@media (max-width: 1200px) {
+    .control-sections {
+        width: 60%;
+    }
+    
+    .image-list-container {
+        width: 40%;
+    }
+}
+
+@media (max-width: 900px) {
+    .control-sections {
+        width: 55%;
+    }
+    
+    .image-list-container {
+        width: 45%;
+    }
+} 

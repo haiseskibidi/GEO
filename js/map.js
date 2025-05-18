@@ -13,17 +13,25 @@ console.log('[DEBUG] Зависимости от config:', typeof config !== 'un
 const MapModule = (function() {
     console.log('[DEBUG] Выполнение IIFE MapModule');
     
-    // Приватные переменные модуля
+    // Основные объекты карты
     let map;
     let view;
+    
+    // Слои
+    let baseLayers = [];
+    let boundaryLayer = null;
     let currentImageLayer = null;
     let secondImageLayer = null;
     
-    // Слой для отображения границы региона
-    let boundaryLayer = null;
-    
-    // Текущий режим отображения (single, swipe)
+    // Хранение текущего режима отображения
     let currentMode = 'single';
+    
+    // Добавляем хранение текущих параметров изображения
+    let currentImageParams = {
+        brightness: 0,
+        contrast: 1,
+        saturation: 1
+    };
     
     /**
      * Инициализация карты OpenLayers
@@ -37,8 +45,7 @@ const MapModule = (function() {
                 center: ol.proj.fromLonLat(config.map.center),
                 zoom: config.map.zoom,
                 minZoom: config.map.minZoom,
-                maxZoom: config.map.maxZoom,
-                extent: config.map.extent ? ol.proj.transformExtent(config.map.extent, 'EPSG:4326', 'EPSG:3857') : undefined
+                maxZoom: config.map.maxZoom
             });
             
             // Создаем базовые слои
@@ -49,8 +56,9 @@ const MapModule = (function() {
                 target: 'map',
                 layers: layers,
                 view: view,
+                projection: 'EPSG:3857',
                 controls: [
-                    // Удаляем стандартный элемент управления масштабированием
+                    // Добавляем только нужные элементы управления
                     new ol.control.ScaleLine(),
                     new ol.control.Attribution(),
                     new ol.control.Rotate()
@@ -94,8 +102,31 @@ const MapModule = (function() {
                         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
                     });
                     break;
+                case 'empty':
+                    source = new ol.source.XYZ({
+                        tileUrlFunction: function() {
+                            return ''; // возвращает пустой URL, создавая пустой базовый слой
+                        }
+                    });
+                    break;
                 default:
                     source = new ol.source.OSM();
+            }
+            
+            // Получаем цвет фона для пустого слоя
+            // Используем значение из localStorage, если оно есть, или белый по умолчанию
+            let bgColor = '#FFFFFF';
+            if (layerConfig.id === 'empty') {
+                const savedColor = localStorage.getItem('emptyLayerBgColor');
+                if (savedColor) {
+                    bgColor = savedColor;
+                }
+                
+                // Обновляем цвет в элементе выбора цвета, если он существует
+                const colorPicker = document.getElementById('bg-color');
+                if (colorPicker) {
+                    colorPicker.value = bgColor;
+                }
             }
             
             // Создаем слой
@@ -106,7 +137,9 @@ const MapModule = (function() {
                     id: layerConfig.id,
                     name: layerConfig.name,
                     type: 'base'
-                }
+                },
+                // Добавляем цвет фона для пустого слоя
+                background: layerConfig.id === 'empty' ? bgColor : undefined
             });
         });
     }
@@ -138,8 +171,9 @@ const MapModule = (function() {
                     color: 'blue',
                     width: 2
                 }),
+                // Удаляем заливку, чтобы был только контур
                 fill: new ol.style.Fill({
-                    color: 'rgba(0, 0, 255, 0.05)'
+                    color: 'rgba(0, 0, 255, 0)' // Полная прозрачность
                 })
             })
         });
@@ -210,16 +244,24 @@ const MapModule = (function() {
                 try {
                     let source;
                     
-                    // Проверяем расширение файла
+                    // Проверяем расширение файла и устанавливаем источник данных
                     if (imageUrl.toLowerCase().endsWith('.tif') || imageUrl.toLowerCase().endsWith('.tiff')) {
-                        // Для GeoTIFF файлов используем специальный источник данных
+                        // Проверяем, что текущий базовый слой является 'Пустым слоем'
+                        const baseLayers = map.getLayers().getArray().filter(layer => layer.get('type') === 'base' && layer.getVisible());
+                        const currentBaseLayer = baseLayers.length > 0 ? baseLayers[0] : null;
+                        if (!currentBaseLayer || currentBaseLayer.get('id') !== 'empty') {
+                            alert('Просмотр TIFF доступен только на "Пустой слой". Пожалуйста, выберите пустой слой.');
+                            showLoading(false);
+                            return;
+                        }
                         console.log('[DEBUG] Загрузка GeoTIFF:', imageUrl);
                         
-                        // Для GeoTIFF используем ImageStatic с предопределенным экстентом
-                        source = new ol.source.ImageStatic({
-                            url: imageUrl,
-                            imageExtent: ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857'),
-                            projection: 'EPSG:3857'
+                        // Для GeoTIFF файлов используем специальный источник данных
+                        source = new ol.source.GeoTIFF({
+                            sources: [
+                                { url: imageUrl }
+                            ],
+                            imageExtent: ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857')
                         });
                     } else {
                         // Для других форматов используем стандартный источник
@@ -232,8 +274,8 @@ const MapModule = (function() {
                     }
                     
                     // Обработчик ошибок при загрузке
-                    source.on('imageloaderror', function() {
-                        console.error(`Ошибка загрузки изображения: ${imageUrl}`);
+                    source.on('imageloaderror', function(error) {
+                        console.error(`Ошибка загрузки изображения: ${imageUrl}`, error);
                         showLoading(false);
                         alert('Не удалось загрузить изображение. Пожалуйста, убедитесь, что файл существует и доступен.');
                     });
@@ -244,13 +286,33 @@ const MapModule = (function() {
                     });
                     
                     // Создаем слой изображения
-                    const layer = new ol.layer.Image({
-                        title: imageData.name || 'Спутниковое изображение',
-                        source: source,
-                        opacity: 0.9,
-                        visible: true,
-                        zIndex: 10
-                    });
+                    let layer;
+                    if (imageUrl.toLowerCase().endsWith('.tif') || imageUrl.toLowerCase().endsWith('.tiff')) {
+                        // Для TIFF файлов используем WebGLTile
+                        layer = new ol.layer.WebGLTile({
+                            title: imageData.name || 'Спутниковое изображение',
+                            source: source,
+                            baseLayer: true,
+                            visible: true,
+                            // Настройки фильтров через стиль
+                            style: {
+                                brightness: 0,     // Начальная яркость
+                                contrast: 0,       // Начальный контраст (без изменений)
+                                saturation: 0,     // Начальная насыщенность (без изменений)
+                                gamma: 1.0,        // Гамма-коррекция (без изменений)
+                                operation: 'none'  // Операция с каналами (без изменений)
+                            }
+                        });
+                    } else {
+                        // Для других форматов используем обычный слой изображений
+                        layer = new ol.layer.Image({
+                            title: imageData.name || 'Спутниковое изображение',
+                            source: source,
+                            //opacity: 0.9,
+                            visible: true,
+                            //zIndex: 10
+                        });
+                    }
                     
                     // Удаляем предыдущий слой, если он существует
                     if (isSecondImage) {
@@ -267,13 +329,13 @@ const MapModule = (function() {
                     
                     // Добавляем слой на карту
                     map.addLayer(layer);
+                    map.setView(source.getView());
                     
                     // Если оба слоя существуют, приближаем карту к экстенту изображения
                     if (currentImageLayer && !secondImageLayer) {
-                        // Если только один слой, просто приблизим к его экстенту
+                        // Если только один слой, просто приблизим к его экстенту без анимации
                         map.getView().fit(ol.proj.transformExtent(imageData.extent, 'EPSG:4326', 'EPSG:3857'), {
-                            padding: [50, 50, 50, 50],
-                            duration: 1000
+                            padding: [50, 50, 50, 50]
                         });
                     } else if (currentImageLayer && secondImageLayer) {
                         // Если есть оба слоя и включен режим сравнения, настроим swipe
@@ -284,6 +346,8 @@ const MapModule = (function() {
                     
                     // Обновляем информацию о текущем изображении
                     updateImageInfo(imageData, isSecondImage);
+                    showLoading(false);
+                    
                     
                 } catch (error) {
                     console.error('[ERROR] Ошибка при добавлении слоя:', error);
@@ -302,6 +366,8 @@ const MapModule = (function() {
             
             // Загружаем изображение
             loadImage();
+            
+            
         } catch (error) {
             console.error('[ERROR] Критическая ошибка в addImageLayer:', error);
             showLoading(false);
@@ -395,22 +461,106 @@ const MapModule = (function() {
     function updateSwipePrerender(percent) {
         if (!currentImageLayer || !secondImageLayer) return;
         
+        console.log('[DEBUG] Обновление шторки, процент:', percent);
+        
         // Получаем контейнер карты
         const mapContainer = map.getTargetElement();
-        const mapWidth = mapContainer.offsetWidth;
-        const clipWidth = mapWidth * (percent / 100);
         
-        // Получаем канвасы обоих слоев
-        const firstCanvas = mapContainer.querySelector('.ol-layer:nth-child(1) canvas');
-        const secondCanvas = mapContainer.querySelector('.ol-layer:nth-child(2) canvas');
+        // Более надежный способ получения canvas элементов слоев
+        // Сначала получаем все canvas элементы
+        const canvases = Array.from(mapContainer.querySelectorAll('.ol-layer canvas'));
+        
+        if (canvases.length < 2) {
+            console.warn('[WARN] Недостаточно canvas элементов для режима шторки:', canvases.length);
+            return;
+        }
+        
+        // Первый canvas - для первого изображения
+        const firstCanvas = canvases[canvases.length - 2]; // Предпоследний
+        // Второй canvas - для второго изображения
+        const secondCanvas = canvases[canvases.length - 1]; // Последний
+        
+        // Выводим отладочную информацию
+        console.log('[DEBUG] Найдено canvas элементов:', canvases.length);
+        console.log('[DEBUG] Применяем clip-path к canvas элементам');
         
         // Применяем обрезку с помощью clip-path
         if (firstCanvas) {
             firstCanvas.style.clipPath = `inset(0 ${100 - percent}% 0 0)`;
+            console.log('[DEBUG] Первый canvas обновлен');
+        } else {
+            console.warn('[WARN] Первый canvas не найден');
         }
         
         if (secondCanvas) {
             secondCanvas.style.clipPath = `inset(0 0 0 ${percent}%)`;
+            console.log('[DEBUG] Второй canvas обновлен');
+        } else {
+            console.warn('[WARN] Второй canvas не найден');
+        }
+    }
+    
+    /**
+     * Синхронизирует стили между основным и вторым изображениями
+     */
+    function syncStyles() {
+        if (!currentImageLayer || !secondImageLayer || !secondImageLayer.getVisible()) {
+            return;
+        }
+        
+        try {
+            // Проверяем, является ли первый слой WebGLTile
+            if (currentImageLayer instanceof ol.layer.WebGLTile && secondImageLayer instanceof ol.layer.WebGLTile) {
+                // Для WebGLTile слоев создаем новый слой с тем же стилем
+                const source = secondImageLayer.getSource();
+                
+                // Создаем новый слой с обновленным стилем
+                const newSecondLayer = new ol.layer.WebGLTile({
+                    title: secondImageLayer.get('title') || 'Спутниковое изображение (сравнение)',
+                    source: source,
+                    baseLayer: secondImageLayer.get('baseLayer'),
+                    visible: secondImageLayer.getVisible(),
+                    style: {
+                        // Используем текущие параметры из currentImageParams
+                        brightness: currentImageParams.brightness,
+                        contrast: currentImageParams.contrast,
+                        saturation: currentImageParams.saturation,
+                        gamma: 1.0,
+                        operation: 'none'
+                    }
+                });
+                
+                // Заменяем слой в карте
+                const layerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
+                if (layerIndex >= 0) {
+                    map.getLayers().removeAt(layerIndex);
+                    map.getLayers().insertAt(layerIndex, newSecondLayer);
+                    secondImageLayer = newSecondLayer;
+                    console.log('[DEBUG] Второй WebGLTile слой обновлен для синхронизации стиля');
+                }
+            } else {
+                // Для обычных слоев ищем DOM элементы
+                const canvasElements = map.getTargetElement().querySelectorAll('.ol-layer canvas');
+                if (canvasElements && canvasElements.length > 0) {
+                    const firstLayerIndex = map.getLayers().getArray().indexOf(currentImageLayer);
+                    const secondLayerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
+                    
+                    if (firstLayerIndex >= 0 && secondLayerIndex >= 0 && 
+                        canvasElements[firstLayerIndex] && canvasElements[secondLayerIndex]) {
+                        // Копируем фильтры с первого canvas на второй
+                        const filter = canvasElements[firstLayerIndex].style.filter;
+                        if (filter) {
+                            canvasElements[secondLayerIndex].style.filter = filter;
+                        }
+                    }
+                }
+            }
+            
+            // Принудительное обновление карты
+            map.updateSize();
+            map.renderSync();
+        } catch (error) {
+            console.error('[ERROR] Ошибка при синхронизации стилей:', error);
         }
     }
     
@@ -419,7 +569,7 @@ const MapModule = (function() {
      * @param {string} mode - режим отображения ('single', 'swipe', 'opacity')
      */
     function setMode(mode) {
-        console.log('Переключение режима отображения на:', mode);
+        console.log('[DEBUG] Переключение режима отображения на:', mode);
         currentMode = mode;
         
         // Проверяем, есть ли два слоя для режимов сравнения
@@ -443,18 +593,74 @@ const MapModule = (function() {
         if (mode === 'swipe') {
             // Настраиваем вертикальную шторку для режима swipe
             if (currentImageLayer && secondImageLayer) {
+                console.log('[DEBUG] Настройка режима шторки');
+                
+                // Проверяем, что оба слоя видимы
+                currentImageLayer.setVisible(true);
+                secondImageLayer.setVisible(true);
+                
+                // Устанавливаем полную непрозрачность
+                currentImageLayer.setOpacity(1);
+                secondImageLayer.setOpacity(1);
+                
+                // Синхронизируем стили между изображениями
+                syncStyles();
+                
                 setupSwipeMode();
             }
-        } else {
-            // Для режима одиночного изображения или прозрачности
-            if (currentImageLayer) currentImageLayer.setVisible(true);
-            
+        } else if (mode === 'opacity') {
             // Для режима прозрачности
-            if (mode === 'opacity' && secondImageLayer) {
+            console.log('[DEBUG] Настройка режима прозрачности');
+            
+            if (currentImageLayer) {
+                currentImageLayer.setVisible(true);
+                currentImageLayer.setOpacity(1);
+            }
+            
+            if (secondImageLayer) {
                 secondImageLayer.setVisible(true);
+                // Устанавливаем прозрачность для второго слоя
                 secondImageLayer.setOpacity(0.5);
-            } else if (secondImageLayer) {
-                // В режиме single скрываем второй слой
+                
+                // Синхронизируем стили между изображениями
+                syncStyles();
+                
+                // Добавляем возможность управления прозрачностью вторым слоем
+                const opacitySlider = document.createElement('input');
+                opacitySlider.type = 'range';
+                opacitySlider.min = '0';
+                opacitySlider.max = '1';
+                opacitySlider.step = '0.1';
+                opacitySlider.value = '0.5';
+                opacitySlider.style.width = '100%';
+                opacitySlider.style.margin = '10px 0';
+                
+                // Контейнер для слайдера
+                const sliderContainer = document.getElementById('swipe-container');
+                
+                // Очищаем контейнер
+                sliderContainer.innerHTML = '<div class="opacity-controls"><p>Прозрачность сравниваемого слоя:</p></div>';
+                sliderContainer.querySelector('.opacity-controls').appendChild(opacitySlider);
+                
+                // Показываем контейнер
+                sliderContainer.style.display = 'block';
+                
+                // Добавляем обработчик изменения прозрачности
+                opacitySlider.addEventListener('input', function() {
+                    const opacity = parseFloat(this.value);
+                    secondImageLayer.setOpacity(opacity);
+                });
+            }
+        } else {
+            // Для режима одиночного изображения
+            console.log('[DEBUG] Настройка одиночного режима');
+            
+            if (currentImageLayer) {
+                currentImageLayer.setVisible(true);
+                currentImageLayer.setOpacity(1);
+            }
+            
+            if (secondImageLayer) {
                 secondImageLayer.setVisible(false);
             }
         }
@@ -515,35 +721,153 @@ const MapModule = (function() {
     }
     
     /**
-     * Переключение между базовыми слоями карты
-     * @param {string} layerId - идентификатор слоя из конфигурации
+     * Устанавливает базовый слой по его ID
+     * @param {string} layerId - идентификатор слоя
      */
     function setBaseLayer(layerId) {
-        console.log('Переключение базового слоя на:', layerId);
+        console.log('[DEBUG] Установка базового слоя:', layerId);
         
-        // Получаем все базовые слои
-        const baseLayers = map.getLayers().getArray().filter(layer => 
-            layer.get('type') === 'base'
-        );
+        if (!map) return;
         
-        // Скрываем все базовые слои
-        baseLayers.forEach(layer => {
-            layer.setVisible(false);
+        const layers = map.getLayers().getArray();
+        
+        // Находим и устанавливаем видимость для базовых слоев
+        layers.forEach(layer => {
+            if (layer.get('type') === 'base') {
+                const isVisible = layer.get('id') === layerId;
+                layer.setVisible(isVisible);
+            }
         });
         
-        // Находим и показываем выбранный слой
-        const selectedLayer = baseLayers.find(layer => layer.get('id') === layerId);
-        if (selectedLayer) {
-            selectedLayer.setVisible(true);
-            console.log('Базовый слой установлен:', layerId);
-        } else {
-            console.error('Не найден базовый слой с ID:', layerId);
+        // Скрываем или показываем слой границы в зависимости от выбранного базового слоя
+        if (boundaryLayer) {
+            boundaryLayer.setVisible(layerId !== 'empty');
+        }
+        
+        // Если переключаемся на любой слой, кроме пустого - удаляем все изображения и сбрасываем вид
+        if (layerId !== 'empty') {
+            // Очищаем все изображения и сбрасываем вид к Приморскому краю
+            
+            // Удаляем слой второго изображения, если он есть
+            if (secondImageLayer) {
+                map.removeLayer(secondImageLayer);
+                secondImageLayer = null;
+            }
+            
+            // Удаляем слой основного изображения, если он есть
+            if (currentImageLayer) {
+                map.removeLayer(currentImageLayer);
+                currentImageLayer = null;
+            }
+            
+            // Принудительно создаем новый объект view с координатами центра Приморского края
+            console.log('[DEBUG] Сброс вида на координаты Приморского края:', config.map.center);
+            
+            // Создаем новый объект View и устанавливаем его для карты
+            const newView = new ol.View({
+                center: ol.proj.fromLonLat(config.map.center),
+                zoom: config.map.zoom,
+                minZoom: config.map.minZoom,
+                maxZoom: config.map.maxZoom
+            });
+            
+            // Устанавливаем новый объект view для карты
+            map.setView(newView);
+            view = newView;
+        }
+        
+        // Обновляем размер карты, чтобы избежать проблем с отображением
+        map.updateSize();
+        
+        // Принудительное обновление вида без задержки
+        map.renderSync();
+    }
+    
+    /**
+     * Устанавливает цвет фона для пустого слоя
+     * @param {string} color - Цвет в формате hex (#RRGGBB)
+     */
+    function setBackgroundColor(color) {
+        console.log('[DEBUG] Установка цвета фона пустого слоя:', color);
+        
+        if (!map) {
+            console.error('[ERROR] Карта не инициализирована');
+            return;
+        }
+        
+        try {
+            // Находим пустой слой среди всех слоев карты
+            const layers = map.getLayers().getArray();
+            const emptyLayer = layers.find(layer => layer.get('id') === 'empty');
+            
+            if (!emptyLayer) {
+                console.error('[ERROR] Пустой слой не найден');
+                return;
+            }
+            
+            // Сохраняем цвет в localStorage для его восстановления при следующей загрузке
+            localStorage.setItem('emptyLayerBgColor', color);
+            
+            // Устанавливаем цвет фона для пустого слоя
+            emptyLayer.setBackground(color);
+            
+            // Устанавливаем цвет фона для контейнера карты
+            const mapContainer = document.querySelector('.map-container');
+            if (mapContainer) {
+                mapContainer.style.backgroundColor = color;
+            }
+            
+            // Более активный метод обновления - создаем новый слой с тем же источником
+            // и новым фоном, затем заменяем старый слой
+            try {
+                const source = emptyLayer.getSource();
+                const oldVisible = emptyLayer.getVisible();
+                
+                // Создаем новый слой с тем же источником, но новым цветом фона
+                const newEmptyLayer = new ol.layer.Tile({
+                    source: source,
+                    visible: oldVisible,
+                    properties: {
+                        id: 'empty',
+                        name: 'Пустой',
+                        type: 'base'
+                    },
+                    background: color
+                });
+                
+                // Находим индекс пустого слоя
+                const layerIndex = layers.indexOf(emptyLayer);
+                
+                // Заменяем старый слой новым
+                if (layerIndex >= 0) {
+                    map.getLayers().removeAt(layerIndex);
+                    map.getLayers().insertAt(layerIndex, newEmptyLayer);
+                    console.log('[DEBUG] Пустой слой заменен для применения нового цвета фона');
+                }
+            } catch (replaceError) {
+                console.warn('[WARN] Не удалось заменить слой:', replaceError);
+                // Продолжаем с методом setBackground
+            }
+            
+            // Обновляем размер карты для принудительного перерисовывания
+            map.updateSize();
+            
+            // Дополнительно вызываем render для более надежного обновления
+            setTimeout(() => {
+                map.render();
+                console.log('[DEBUG] Цвет фона обновлен и карта перерисована');
+            }, 100);
+            
+            return true;
+        } catch (error) {
+            console.error('[ERROR] Ошибка при установке цвета фона:', error);
+            return false;
         }
     }
     
     /**
-     * Настройка параметров отображения для изображения
-     * @param {Object} params - Параметры отображения
+     * Применяет настройки рендеринга к изображению
+     * @param {Object} params - Параметры рендеринга (brightness, contrast, saturation и т.д.)
      */
     function setImageRenderParams(params) {
         if (!currentImageLayer) {
@@ -551,6 +875,120 @@ const MapModule = (function() {
             return;
         }
         
+        // Добавляем ограничения значений, чтобы избежать слишком ярких изображений
+        let safeParams = {
+            brightness: Math.max(-1.5, Math.min(0.7, params.brightness || 0)),
+            contrast: Math.max(-4, Math.min(4, params.contrast || 0)),
+            saturation: Math.max(-4, Math.min(4, params.saturation || 0))
+        };
+
+        // Добавляем другие параметры, если они есть, с ограничениями
+        if (params.hue !== undefined) {
+            safeParams.hue = Math.max(-180, Math.min(180, params.hue));
+        }
+        if (params.sepia !== undefined) {
+            safeParams.sepia = Math.max(0, Math.min(1, params.sepia));
+        }
+        
+        console.log('[DEBUG] Применение фильтров с ограничениями:', safeParams);
+        
+        // Проверяем, является ли слой WebGLTile (используется для TIFF)
+        const isWebGLTileLayer = currentImageLayer instanceof ol.layer.WebGLTile;
+        
+        console.log('[DEBUG] Применение фильтров к изображению. Тип слоя:', isWebGLTileLayer ? 'WebGLTile' : 'Обычный');
+        
+        if (isWebGLTileLayer) {
+            // Для WebGLTile слоев применяем параметры напрямую через свойство style
+            try {
+                // Делаем копию текущего слоя перед изменением
+                const oldLayer = currentImageLayer;
+                // Получаем настройки и источник данных
+                const source = oldLayer.getSource();
+                
+                // Создаем новый слой с теми же параметрами, но обновленным стилем
+                const newLayer = new ol.layer.WebGLTile({
+                    title: oldLayer.get('title') || 'Спутниковое изображение',
+                    source: source,
+                    baseLayer: oldLayer.get('baseLayer'),
+                    visible: oldLayer.getVisible(),
+                    style: {
+                        brightness: safeParams.brightness,
+                        contrast: safeParams.contrast,
+                        saturation: safeParams.saturation,
+                        gamma: 1.0,
+                        operation: 'none'
+                    }
+                });
+                
+                // Заменяем слой в карте
+                const layerIndex = map.getLayers().getArray().indexOf(oldLayer);
+                if (layerIndex >= 0) {
+                    map.getLayers().removeAt(layerIndex);
+                    map.getLayers().insertAt(layerIndex, newLayer);
+                    currentImageLayer = newLayer;
+                    console.log('[DEBUG] WebGLTile слой заменен для обновления стиля');
+                }
+                
+                // Делаем то же самое для второго слоя, если он есть и виден
+                if (secondImageLayer && secondImageLayer.getVisible() && secondImageLayer instanceof ol.layer.WebGLTile) {
+                    const oldSecondLayer = secondImageLayer;
+                    const secondSource = oldSecondLayer.getSource();
+                    
+                    const newSecondLayer = new ol.layer.WebGLTile({
+                        title: oldSecondLayer.get('title') || 'Спутниковое изображение (сравнение)',
+                        source: secondSource,
+                        baseLayer: oldSecondLayer.get('baseLayer'),
+                        visible: oldSecondLayer.getVisible(),
+                        style: {
+                            brightness: safeParams.brightness,
+                            contrast: safeParams.contrast,
+                            saturation: safeParams.saturation,
+                            gamma: 1.0,
+                            operation: 'none'
+                        }
+                    });
+                    
+                    const secondLayerIndex = map.getLayers().getArray().indexOf(oldSecondLayer);
+                    if (secondLayerIndex >= 0) {
+                        map.getLayers().removeAt(secondLayerIndex);
+                        map.getLayers().insertAt(secondLayerIndex, newSecondLayer);
+                        secondImageLayer = newSecondLayer;
+                        console.log('[DEBUG] Второй WebGLTile слой заменен для обновления стиля');
+                    }
+                }
+                
+                // Принудительное обновление карты
+                setTimeout(() => {
+                    map.updateSize();
+                    map.renderSync();
+                    console.log('[DEBUG] Карта принудительно обновлена после замены слоев');
+                }, 10);
+            } catch (error) {
+                console.error('[ERROR] Ошибка при обновлении WebGLTile слоя:', error);
+                
+                // Запасной вариант - используем CSS фильтры
+                applyCSS_Filters(safeParams);
+            }
+        } else {
+            // Для обычных слоев используем CSS фильтры
+            applyCSS_Filters(safeParams);
+        }
+        
+        // Сохраняем текущие параметры фильтров
+        currentImageParams = safeParams;
+        
+        // Если мы в режиме сравнения, синхронизируем стили
+        if (currentMode === 'swipe' || currentMode === 'opacity') {
+            syncStyles();
+        }
+    }
+    
+    /**
+     * Применяет CSS-фильтры к изображению
+     * @param {Object} params - параметры фильтров (brightness, contrast, saturation)
+     * @param {boolean} isSecond - флаг, указывающий, что обрабатывается второе изображение
+     */
+    function applyCSS_Filters(params, isSecond = false) {
         const filters = [];
         
         // Добавляем фильтры на основе параметров
@@ -559,11 +997,19 @@ const MapModule = (function() {
         }
         
         if (params.contrast !== undefined) {
-            filters.push(`contrast(${params.contrast})`);
+            // Обработка отрицательных значений контраста
+            const contrastValue = params.contrast < 0 
+                ? Math.max(0.1, 1 / (Math.abs(params.contrast) + 1)) 
+                : params.contrast;
+            filters.push(`contrast(${contrastValue})`);
         }
         
         if (params.saturation !== undefined) {
-            filters.push(`saturate(${params.saturation})`);
+            // Обработка отрицательных значений насыщенности
+            const saturationValue = params.saturation < 0 
+                ? Math.max(0, 1 + params.saturation / 4) 
+                : params.saturation;
+            filters.push(`saturate(${saturationValue})`);
         }
         
         // Добавляем поддержку поворота оттенка (hue-rotate)
@@ -579,29 +1025,47 @@ const MapModule = (function() {
         // Применяем фильтры к слою
         if (filters.length > 0) {
             const filterString = filters.join(' ');
-            console.log('Применяем фильтры к изображению:', filterString);
+            console.log('[DEBUG] Применяем CSS фильтры к изображению:', filterString);
             
             try {
-                // Получаем HTML-элемент изображения
-                const layerCanvas = map.getTargetElement().querySelector('.ol-layer canvas');
-                if (layerCanvas) {
-                    layerCanvas.style.filter = filterString;
-                    console.log('Фильтры применены к слою');
+                // Получаем все HTML-элементы изображения
+                const canvasElements = map.getTargetElement().querySelectorAll('.ol-layer canvas');
+                
+                if (canvasElements && canvasElements.length > 0) {
+                    // Применяем фильтры к активному слою
+                    if (currentImageLayer) {
+                        // Находим индекс текущего слоя в массиве слоев карты
+                        const layerIndex = map.getLayers().getArray().indexOf(currentImageLayer);
+                        if (layerIndex >= 0 && canvasElements[layerIndex]) {
+                            canvasElements[layerIndex].style.filter = filterString;
+                            console.log('[DEBUG] Фильтры применены к основному слою, индекс:', layerIndex);
+                        } else {
+                            // Запасной вариант - применить ко всем canvas
+                            canvasElements.forEach((canvas, i) => {
+                                canvas.style.filter = filterString;
+                                console.log('[DEBUG] Фильтры применены к canvas с индексом:', i);
+                            });
+                        }
+                    }
                     
-                    // Если есть второй слой и мы в режиме сравнения, применяем те же фильтры
-                    if (secondImageLayer && secondImageLayer.getVisible() && currentMode === 'swipe') {
-                        const secondCanvas = map.getTargetElement().querySelectorAll('.ol-layer canvas')[1];
-                        if (secondCanvas) {
-                            secondCanvas.style.filter = filterString;
+                    // Если есть второй слой, применяем те же фильтры
+                    if (secondImageLayer && secondImageLayer.getVisible()) {
+                        const secondLayerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
+                        if (secondLayerIndex >= 0 && canvasElements[secondLayerIndex]) {
+                            canvasElements[secondLayerIndex].style.filter = filterString;
+                            console.log('[DEBUG] Фильтры применены ко второму слою, индекс:', secondLayerIndex);
                         }
                     }
                 } else {
-                    console.warn('Не найден canvas элемент слоя');
+                    console.warn('[WARN] Не найдены canvas элементы слоев');
                 }
             } catch (error) {
-                console.error('Ошибка при установке фильтров:', error);
+                console.error('[ERROR] Ошибка при установке фильтров:', error);
             }
         }
+        
+        // Принудительное обновление карты для обычных слоев
+        map.render();
     }
     
     /**
@@ -610,21 +1074,18 @@ const MapModule = (function() {
      */
     function zoom(delta) {
         const currentZoom = view.getZoom();
-        view.animate({
-            zoom: currentZoom + delta,
-            duration: 250
-        });
+        // Мгновенное изменение масштаба без анимации
+        view.setZoom(currentZoom + delta);
     }
     
     /**
      * Сброс вида карты к начальному
      */
     function resetView() {
-        view.animate({
-            center: ol.proj.fromLonLat(config.map.center),
-            zoom: config.map.zoom,
-            duration: 500
-        });
+        // Мгновенный сброс вида без анимации
+        view.setCenter(ol.proj.fromLonLat(config.map.center));
+        view.setZoom(config.map.zoom);
+        console.log('[DEBUG] Вид сброшен к координатам Приморского края без анимации');
     }
     
     /**
@@ -644,67 +1105,6 @@ const MapModule = (function() {
         }
     }
     
-    /**
-     * Применяет выбранный режим рендеринга к изображению
-     * @param {string} modeId - Идентификатор режима рендеринга из конфигурации
-     */
-    function setRenderMode(modeId) {
-        console.log('Применение режима рендеринга:', modeId);
-        
-        if (!currentImageLayer) {
-            console.warn('Нет активного изображения для применения режима рендеринга');
-            alert('Пожалуйста, выберите изображение перед применением режима рендеринга');
-            return;
-        }
-        
-        // Находим режим в конфигурации
-        const renderMode = config.renderModes.find(mode => mode.id === modeId);
-        if (!renderMode) {
-            console.error('Не найден режим рендеринга с ID:', modeId);
-            return;
-        }
-        
-        // Применяем настройки фильтров
-        setImageRenderParams(renderMode.filters);
-        
-        // Обновляем слайдеры настроек, чтобы они соответствовали выбранному режиму
-        updateRenderControlSliders(renderMode.filters);
-        
-        console.log('Режим рендеринга применен:', modeId);
-    }
-    
-    /**
-     * Обновляет положение слайдеров в соответствии с выбранным режимом рендеринга
-     * @param {Object} filters - Объект с параметрами фильтров
-     */
-    function updateRenderControlSliders(filters) {
-        // Обновляем слайдер яркости
-        if (filters.brightness !== undefined) {
-            const brightnessSlider = document.getElementById('brightness');
-            if (brightnessSlider) {
-                brightnessSlider.value = filters.brightness;
-            }
-        }
-        
-        // Обновляем слайдер контраста
-        if (filters.contrast !== undefined) {
-            const contrastSlider = document.getElementById('contrast');
-            if (contrastSlider) {
-                contrastSlider.value = filters.contrast;
-            }
-        }
-        
-        // Обновляем слайдер насыщенности
-        if (filters.saturation !== undefined) {
-            const saturationSlider = document.getElementById('saturation');
-            if (saturationSlider) {
-                saturationSlider.value = filters.saturation;
-            }
-        }
-        
-        // В будущем можно добавить обработку других параметров, например hue или sepia
-    }
-    
     console.log('[DEBUG] Определение публичного API MapModule');
     
     // Публичный API модуля
@@ -713,8 +1113,8 @@ const MapModule = (function() {
         addImageLayer: addImageLayer,
         setMode: setMode,
         setBaseLayer: setBaseLayer,
+        setBackgroundColor: setBackgroundColor,
         setImageRenderParams: setImageRenderParams,
-        setRenderMode: setRenderMode,
         zoom: zoom,
         resetView: resetView,
         getMap: function() { return map; },
@@ -727,7 +1127,13 @@ const MapModule = (function() {
                 }, 50);
             }
         },
-        getCurrentMode: function() { return currentMode; }
+        getCurrentMode: function() { return currentMode; },
+        getSecondImageLayer: function() { return secondImageLayer; },
+        resetSecondImageLayer: function() { 
+            console.log('[DEBUG] Сброс ссылки на второй слой изображения');
+            secondImageLayer = null;
+        },
+        syncStyles: syncStyles
     };
 })();
 

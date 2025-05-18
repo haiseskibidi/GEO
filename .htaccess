@@ -1,0 +1,14 @@
+AddType image/tiff .tif .tiff
+AddType application/geo+tiff .tif .tiff
+
+# Включаем CORS для обработки запросов JavaScript
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Range"
+</IfModule>
+
+# Разрешаем HTTP Range запросы для эффективной загрузки GeoTIFF
+<IfModule mod_headers.c>
+    Header set Accept-Ranges "bytes"
+</IfModule> 

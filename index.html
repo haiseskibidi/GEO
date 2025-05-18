@@ -10,6 +10,9 @@
     
     <!-- Пользовательские стили -->
     <link rel="stylesheet" href="css/main.css">
+	
+	<!-- Подключаем geotiff  -->
+	<script src="https://cdn.jsdelivr.net/npm/geotiff"></script>
     
     <!-- Подключаем OpenLayers и другие внешние библиотеки заранее -->
     <script src="https://cdn.jsdelivr.net/npm/ol@7.4.0/dist/ol.js"></script>
@@ -19,115 +22,28 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
-<body>
+<body class="dark-theme">
     <div class="app-container">
         <header>
             <h1>Геопортал мониторинга изменений</h1>
         </header>
         
         <div class="main-content">
-            <!-- Боковая панель с инструментами -->
-            <div class="sidebar" id="sidebar">
-                <h3>Инструменты</h3>
-                
-                <!-- Режимы отображения -->
-                <div class="mode-selector">
-                    <h4>Режим отображения</h4>
-                    <select id="display-mode">
-                        <option value="single">Одиночное изображение</option>
-                        <option value="swipe">Сравнение (шторка)</option>
-                        <option value="opacity">Сравнение (прозрачность)</option>
-                    </select>
-                </div>
-                
-                <!-- Базовые слои карты -->
-                <div class="base-layers">
-                    <h4>Базовый слой</h4>
-                    <div class="base-layer-selector">
-                        <label>
-                            <input type="radio" name="base-layer" value="osm"> OpenStreetMap
-                        </label>
-                        <label>
-                            <input type="radio" name="base-layer" value="satellite" checked> Спутник
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Панель поиска изображений -->
-                <div class="search-panel">
-                    <h4>Поиск изображений</h4>
-                    <div class="date-filter">
-                        <label for="date-from">Дата от:</label>
-                        <input type="date" id="date-from">
-                        
-                        <label for="date-to">Дата до:</label>
-                        <input type="date" id="date-to">
-                    </div>
-                    <button id="search-images">Найти изображения</button>
-                </div>
-                
-                <!-- Список найденных изображений -->
-                <h4>Доступные изображения</h4>
-                <div id="image-list" class="image-list">
-                    <!-- Здесь будут отображаться найденные изображения -->
-                </div>
-                <div id="no-images-message" class="no-images hidden">Изображения не найдены</div>
-                
-                <!-- Элементы управления изображением -->
-                <div class="image-controls">
-                    <h4>Настройки изображения</h4>
-                    
-                    <div class="control-group">
-                        <label for="brightness">Яркость:</label>
-                        <input type="range" id="brightness" min="-1" max="1" step="0.1" value="0">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label for="contrast">Контраст:</label>
-                        <input type="range" id="contrast" min="0" max="2" step="0.1" value="1">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label for="saturation">Насыщенность:</label>
-                        <input type="range" id="saturation" min="0" max="2" step="0.1" value="1">
-                    </div>
-                    
-                    <div class="control-actions">
-                        <button id="reset-image-settings" class="btn-reset-settings">Сбросить настройки</button>
-                    </div>
-                </div>
-                
-                <!-- Режимы рендеринга -->
-                <div class="rendering-panel">
-                    <h4>Режим рендеринга</h4>
-                    <select id="render-mode">
-                        <option value="natural">Естественный цвет</option>
-                        <option value="color_ir">Цветной ИК</option>
-                        <option value="short_wave_ir">Коротковолновый ИК</option>
-                        <option value="agriculture">Сельское хозяйство</option>
-                        <option value="urban">Городская среда</option>
-                        <option value="ndvi">Индекс вегетации (NDVI)</option>
-                        <option value="temp">Температура поверхности</option>
-                    </select>
-                    <p class="render-mode-description">Отображение в естественных цветах (RGB)</p>
-                </div>
-            </div>
-            
             <!-- Контейнер карты -->
             <div class="map-container">
                 <div id="map"></div>
+                
+                <!-- Информация о карте -->
+                <div class="map-info">
+                    <div id="mouse-position">Координаты: 0°, 0°</div>
+                    <div id="scale-info">Масштаб: 1:1000000</div>
+                </div>
                 
                 <!-- Элементы управления картой -->
                 <div class="map-controls">
                     <button id="zoom-in" title="Приблизить">+</button>
                     <button id="zoom-out" title="Отдалить">-</button>
                     <button id="reset-view" title="Сбросить вид">⟲</button>
-                </div>
-                
-                <!-- Информация о карте -->
-                <div class="map-info">
-                    <div id="mouse-position">Координаты: 0°, 0°</div>
-                    <div id="scale-info">Масштаб: 1:1000000</div>
                 </div>
                 
                 <!-- Контейнер для шторки сравнения -->
@@ -142,6 +58,91 @@
                     <div class="swipe-line"></div>
                     <div class="swipe-handle" id="swipe-handle"></div>
                 </div>
+            </div>
+            
+            <!-- Горизонтальная панель управления (вместо боковой) -->
+            <div class="bottom-panel" id="control-panel">
+                <!-- Содержимое панели -->
+                <div class="panel-content">
+                    <!-- Основные элементы управления в компактном макете -->
+                    <div class="control-sections">
+                        <!-- Секция с базовыми слоями и поиском -->
+                        <div class="control-section">
+                            <div class="base-layer-selector">
+                                <h4>Базовые слои:</h4>
+                                <input type="radio" name="base-layer" id="layer-osm" value="osm">
+                                <label for="layer-osm">OSM</label>
+                                
+                                <input type="radio" name="base-layer" id="layer-satellite" value="satellite" checked>
+                                <label for="layer-satellite">Спутник</label>
+                                
+                                <input type="radio" name="base-layer" id="layer-empty" value="empty">
+                                <label for="layer-empty">Пустой</label>
+                            </div>
+                            
+                            <div class="search-panel">
+                                <div class="date-filter">
+                                    <input type="date" id="date-from" placeholder="Дата от">
+                                    <input type="date" id="date-to" placeholder="Дата до">
+                                    <button id="search-images" class="btn-action btn-small">Найти</button>
+                                </div>
+                            </div>
+                            
+                            <div class="mode-selector">
+                                <h4>Режим сравнения:</h4>
+                                <select id="display-mode">
+                                    <option value="single">Обычный</option>
+                                    <option value="swipe">Шторка</option>
+                                    <option value="opacity">Прозрачность</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Секция с настройками изображения -->
+                        <div class="control-section">
+                            <div class="image-controls">
+                                <div class="sliders-container">
+                                    <div class="control-group">
+                                        <label for="brightness">Яркость:</label>
+                                        <input type="range" id="brightness" min="-1.5" max="0.7" step="0.1" value="0">
+                                        <span id="brightness-value">0.0</span>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="contrast">Контраст:</label>
+                                        <input type="range" id="contrast" min="-4" max="4" step="0.1" value="0">
+                                        <span id="contrast-value">0.0</span>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="saturation">Насыщенность:</label>
+                                        <input type="range" id="saturation" min="-4" max="4" step="0.1" value="0">
+                                        <span id="saturation-value">0.0</span>
+                                    </div>
+                                    
+                                    <div class="control-group color-picker-group">
+                                        <label for="bg-color">Цвет фона:</label>
+                                        <input type="color" id="bg-color" value="#ffffff">
+                                        <button id="apply-bg-color" class="btn-action btn-small">Применить</button>
+                                    </div>
+                                    
+                                    <button id="reset-image-settings" class="btn-reset-settings btn-small">Сбросить</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Список найденных изображений -->
+                    <div class="image-list-container">
+                        <div id="image-list" class="image-list">
+                            <!-- Здесь будут отображаться найденные изображения -->
+                        </div>
+                        <div id="no-images-message" class="no-images hidden">Изображения не найдены</div>
+                    </div>
+                </div>
+                
+                <!-- Кнопка сворачивания/разворачивания панели -->
+                <button id="toggle-panel" class="panel-toggle" title="Свернуть/развернуть панель">▼</button>
             </div>
         </div>
     </div>
@@ -187,6 +188,9 @@
                     // Запускаем приложение
                     console.log('Инициализация приложения...');
                     App.init();
+                    
+                    // Настройка сворачивания/разворачивания панели
+                    setupPanel();
                 } else {
                     console.error('Не все модули загружены корректно.');
                 }
@@ -195,6 +199,23 @@
                 console.error('Ошибка при загрузке скриптов:', error);
             }
         });
+        
+        // Функция для настройки панели
+        function setupPanel() {
+            // Настройка сворачивания/разворачивания панели
+            const toggleButton = document.getElementById('toggle-panel');
+            const controlPanel = document.getElementById('control-panel');
+            
+            toggleButton.addEventListener('click', () => {
+                controlPanel.classList.toggle('collapsed');
+                toggleButton.textContent = controlPanel.classList.contains('collapsed') ? '▲' : '▼';
+                
+                // Обновляем высоту карты при сворачивании/разворачивании
+                if (typeof ControlsModule !== 'undefined' && ControlsModule.adjustMapHeight) {
+                    ControlsModule.adjustMapHeight();
+                }
+            });
+        }
     </script>
 </body>
 </html> 
