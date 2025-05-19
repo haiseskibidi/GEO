@@ -53,6 +53,78 @@
       "cloudCoverage": 0,
       "extent": [131.61, 43.35, 131.92, 43.57],
       "sensor": "Канопус-В"
+    },
+    {
+      "id": "landsat8_20231016_true",
+      "name": "Landsat 8 (16.10.2023) True Color",
+      "date": "2023-10-16",
+      "url": "sputniki/Landsat/LC8_20231016/LC08_L1TP_114030_20231016_20231102_02_T1_True.tif",
+      "cloudCoverage": 5,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 8"
+    },
+    {
+      "id": "landsat8_20231016_false",
+      "name": "Landsat 8 (16.10.2023) False Color",
+      "date": "2023-10-16",
+      "url": "sputniki/Landsat/LC8_20231016/LC08_L1TP_114030_20231016_20231102_02_T1_False.tif",
+      "cloudCoverage": 5,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 8"
+    },
+    {
+      "id": "landsat9_20230906_true",
+      "name": "Landsat 9 (06.09.2023) True Color",
+      "date": "2023-09-06",
+      "url": "sputniki/Landsat/LC9_20230906/LC09_L1TP_114030_20230906_20230906_02_T1_True.tif",
+      "cloudCoverage": 10,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
+    },
+    {
+      "id": "landsat9_20230906_false",
+      "name": "Landsat 9 (06.09.2023) False Color",
+      "date": "2023-09-06",
+      "url": "sputniki/Landsat/LC9_20230906/LC09_L1TP_114030_20230906_20230906_02_T1_False.tif",
+      "cloudCoverage": 10,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
+    },
+    {
+      "id": "landsat9_20231125_true",
+      "name": "Landsat 9 (25.11.2023) True Color",
+      "date": "2023-11-25",
+      "url": "sputniki/Landsat/LC9_20231125t/LC09_L1TP_114030_20231125_20231125_02_T1_True.tif",
+      "cloudCoverage": 15,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
+    },
+    {
+      "id": "landsat9_20231125_false",
+      "name": "Landsat 9 (25.11.2023) False Color",
+      "date": "2023-11-25",
+      "url": "sputniki/Landsat/LC9_20231125t/LC09_L1TP_114030_20231125_20231125_02_T1_False.tif",
+      "cloudCoverage": 15,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
+    },
+    {
+      "id": "landsat9_20240316_true",
+      "name": "Landsat 9 (16.03.2024) True Color",
+      "date": "2024-03-16",
+      "url": "sputniki/Landsat/LC9_20240316/LC09_L1TP_114030_20240316_20240316_02_T1_True.tif",
+      "cloudCoverage": 20,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
+    },
+    {
+      "id": "landsat9_20240316_false",
+      "name": "Landsat 9 (16.03.2024) False Color",
+      "date": "2024-03-16",
+      "url": "sputniki/Landsat/LC9_20240316/LC09_L1TP_114030_20240316_20240316_02_T1_False.tif",
+      "cloudCoverage": 20,
+      "extent": [131.0, 42.5, 133.5, 44.5],
+      "sensor": "Landsat 9"
     }
   ]
 } 

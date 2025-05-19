@@ -43,7 +43,7 @@ const config = {
     validExtensions: ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.jp2'],
     
     ui: {
-        maxImagesPerPage: 10,
+        maxImagesPerPage: 100,
         
         displayModes: [
             {id: 'single', name: 'Одиночное изображение'},

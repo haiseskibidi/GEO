@@ -11,7 +11,7 @@
     --danger-color-hover: #c0392b;
     --success-color: #2ecc71;
     --border-radius: 4px;
-    --panel-height: 220px;
+    --panel-height: 180px;
     --header-height: 50px;
     --panel-collapsed-height: 40px;
     --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -146,10 +146,10 @@ header h1 {
 
 /* Общие стили для элементов формы */
 h4 {
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     font-weight: 500;
     color: var(--text-light);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 /* Контрольные секции */
@@ -157,8 +157,8 @@ h4 {
     display: flex;
     flex-wrap: nowrap;
     width: 65%;
-    padding: 10px;
-    gap: 8px;
+    padding: 8px;
+    gap: 6px;
     height: 100%;
     overflow: visible;
 }
@@ -166,9 +166,9 @@ h4 {
 .control-section {
     background-color: var(--bg-dark-lighter);
     border-radius: var(--border-radius);
-    padding: 8px;
+    padding: 6px;
     flex: 1;
-    min-width: 0; /* Позволяет элементам быть меньше их содержимого */
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -195,34 +195,36 @@ select:focus, input:focus {
     background-color: var(--accent-color);
     color: white;
     border: none;
-    padding: 6px 10px;
+    padding: 4px 8px;
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: background-color 0.2s;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     white-space: nowrap;
 }
 
 .btn-small {
-    padding: 3px 7px;
-    font-size: 0.8rem;
+    padding: 2px 6px;
+    font-size: 0.75rem;
 }
 
 .btn-action:hover {
     background-color: var(--accent-color-hover);
 }
 
+/* Кнопка сброса настроек */
 .btn-reset-settings {
     background-color: var(--danger-color);
     color: white;
     border: none;
-    margin-top: 8px;
-    align-self: flex-end;
+    margin-top: 4px;
+    margin-left: auto;
     font-size: 0.75rem;
     padding: 3px 6px;
     border-radius: var(--border-radius);
     cursor: pointer;
     transition: background-color 0.2s;
+    display: block;
 }
 
 .btn-reset-settings:hover {
@@ -231,7 +233,7 @@ select:focus, input:focus {
 
 /* Группы элементов управления */
 .control-group {
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     position: relative;
 }
 
@@ -239,10 +241,10 @@ select:focus, input:focus {
 .base-layer-selector {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
-    margin-bottom: 10px;
+    gap: 4px;
+    margin-bottom: 6px;
     background-color: var(--bg-dark);
-    padding: 8px;
+    padding: 6px;
     border-radius: var(--border-radius);
 }
 
@@ -284,15 +286,15 @@ select:focus, input:focus {
 /* Режимы отображения */
 .mode-selector {
     display: flex;
-    gap: 5px;
-    align-items: center;
     flex-wrap: nowrap;
-    margin-top: 10px;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
 }
 
 .mode-selector h4 {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     white-space: nowrap;
 }
 
@@ -313,50 +315,58 @@ select:focus, input:focus {
 /* Поиск */
 .search-panel .date-filter {
     display: flex;
+    gap: 4px;
     flex-wrap: wrap;
-    gap: 5px;
-    align-items: center;
+    margin-bottom: 6px;
 }
 
 .search-panel input[type="date"] {
     flex: 1;
     min-width: 0;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    padding: 3px 5px;
 }
 
-/* Слайдеры настроек изображения */
+/* Контейнеры для слайдеров и настроек изображений */
 .sliders-container {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: auto;
-    overflow: visible;
+    gap: 4px;
+    width: 100%;
+    padding: 4px;
+    background-color: var(--bg-dark);
+    border-radius: var(--border-radius);
+    margin-top: 4px;
 }
 
 .sliders-container .control-group {
-    margin-bottom: 0;
     display: flex;
     align-items: center;
-    gap: 5px;
+    margin-bottom: 2px;
+    gap: 4px;
 }
 
 .sliders-container label {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    min-width: 90px;
-    flex-shrink: 0;
+    width: 105px;
+    font-size: 0.8rem;
+    color: var(--text-light-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
+/* Стили для слайдеров */
 input[type="range"] {
     -webkit-appearance: none;
-    flex: 1;
-    min-width: 0;
-    height: 5px;
-    background: var(--bg-dark);
-    border-radius: 3px;
+    height: 8px;
+    background: var(--bg-dark-accent);
+    border-radius: 4px;
     outline: none;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    flex: 1;
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 0;
+    max-width: 100%;
 }
 
 input[type="range"]:hover {
@@ -384,31 +394,99 @@ input[type="range"]::-moz-range-thumb {
 
 /* Стили для отображения значений слайдеров */
 .sliders-container span {
+    display: inline-block;
     width: 30px;
     text-align: right;
-    font-size: 0.8rem;
-    color: var(--text-light-secondary);
+    font-size: 0.75rem;
+    color: var(--accent-color);
+    font-family: monospace;
+    cursor: pointer;
+    border: 1px solid transparent;
+    padding: 1px 3px;
+    border-radius: 3px;
+    transition: all 0.2s;
 }
 
-/* Стили для элемента выбора цвета */
+.sliders-container span:hover {
+    background-color: var(--bg-dark-lighter);
+    border-color: var(--accent-color);
+}
+
+/* Стили для поля ввода значений */
+.sliders-container input[type="number"] {
+    display: inline-block;
+    width: 44px;
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--accent-color);
+    font-family: monospace;
+    background-color: var(--bg-dark);
+    border: 1px solid var(--accent-color);
+    border-radius: 3px;
+    padding: 1px 3px;
+    margin: 0;
+    -moz-appearance: textfield; /* Firefox */
+}
+
+/* Убираем стрелки у числового поля */
+.sliders-container input[type="number"]::-webkit-inner-spin-button,
+.sliders-container input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Разделяем настройки изображений на две колонки */
+.image-settings-columns {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.image-settings-column {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Заголовки настроек изображений */
+.image-settings-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+    color: var(--accent-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Группа для выбора цвета фона */
 .color-picker-group {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
+
+.color-picker-group label {
+    font-size: 0.8rem;
+    color: var(--text-light-secondary);
+    width: 80px;
 }
 
 .color-picker-group input[type="color"] {
     width: 30px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid #444;
-    border-radius: var(--border-radius);
-    background: none;
+    height: 20px;
+    border: none;
+    border-radius: 3px;
     cursor: pointer;
+    background-color: transparent;
+    padding: 0;
 }
 
 .color-picker-group button {
-    margin-left: 5px;
+    font-size: 0.75rem;
+    padding: 2px 5px;
+    margin-left: 4px;
 }
 
 /* Список изображений */
@@ -705,23 +783,55 @@ input[type="range"]::-moz-range-thumb {
     animation: processing-pulse 1.5s infinite;
 }
 
-/* Адаптация для маленьких экранов */
+/* Контейнер для элементов управления изображением */
+.image-controls {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.opacity-controls {
+    background-color: var(--bg-dark);
+    border-radius: var(--border-radius);
+    padding: 6px;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+/* Еще более компактное расположение для режима responsive */
 @media (max-width: 1200px) {
     .control-sections {
-        width: 60%;
+        width: 70%;
     }
     
     .image-list-container {
-        width: 40%;
+        width: 30%;
+    }
+    
+    .image-settings-columns {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .image-settings-column {
+        width: 100%;
+    }
+    
+    .sliders-container label {
+        width: 90px;
     }
 }
 
 @media (max-width: 900px) {
     .control-sections {
-        width: 55%;
+        width: 100%;
+        flex-wrap: wrap;
     }
     
     .image-list-container {
-        width: 45%;
+        width: 100%;
+        height: 150px;
+        overflow-y: auto;
     }
 } 

@@ -26,11 +26,17 @@ const MapModule = (function() {
     // Хранение текущего режима отображения
     let currentMode = 'single';
     
-    // Добавляем хранение текущих параметров изображения
-    let currentImageParams = {
+    // Добавляем хранение параметров для обоих изображений
+    let firstImageParams = {
         brightness: 0,
-        contrast: 1,
-        saturation: 1
+        contrast: 0,
+        saturation: 0
+    };
+    
+    let secondImageParams = {
+        brightness: 0,
+        contrast: 0,
+        saturation: 0
     };
     
     /**
@@ -501,70 +507,6 @@ const MapModule = (function() {
     }
     
     /**
-     * Синхронизирует стили между основным и вторым изображениями
-     */
-    function syncStyles() {
-        if (!currentImageLayer || !secondImageLayer || !secondImageLayer.getVisible()) {
-            return;
-        }
-        
-        try {
-            // Проверяем, является ли первый слой WebGLTile
-            if (currentImageLayer instanceof ol.layer.WebGLTile && secondImageLayer instanceof ol.layer.WebGLTile) {
-                // Для WebGLTile слоев создаем новый слой с тем же стилем
-                const source = secondImageLayer.getSource();
-                
-                // Создаем новый слой с обновленным стилем
-                const newSecondLayer = new ol.layer.WebGLTile({
-                    title: secondImageLayer.get('title') || 'Спутниковое изображение (сравнение)',
-                    source: source,
-                    baseLayer: secondImageLayer.get('baseLayer'),
-                    visible: secondImageLayer.getVisible(),
-                    style: {
-                        // Используем текущие параметры из currentImageParams
-                        brightness: currentImageParams.brightness,
-                        contrast: currentImageParams.contrast,
-                        saturation: currentImageParams.saturation,
-                        gamma: 1.0,
-                        operation: 'none'
-                    }
-                });
-                
-                // Заменяем слой в карте
-                const layerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
-                if (layerIndex >= 0) {
-                    map.getLayers().removeAt(layerIndex);
-                    map.getLayers().insertAt(layerIndex, newSecondLayer);
-                    secondImageLayer = newSecondLayer;
-                    console.log('[DEBUG] Второй WebGLTile слой обновлен для синхронизации стиля');
-                }
-            } else {
-                // Для обычных слоев ищем DOM элементы
-                const canvasElements = map.getTargetElement().querySelectorAll('.ol-layer canvas');
-                if (canvasElements && canvasElements.length > 0) {
-                    const firstLayerIndex = map.getLayers().getArray().indexOf(currentImageLayer);
-                    const secondLayerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
-                    
-                    if (firstLayerIndex >= 0 && secondLayerIndex >= 0 && 
-                        canvasElements[firstLayerIndex] && canvasElements[secondLayerIndex]) {
-                        // Копируем фильтры с первого canvas на второй
-                        const filter = canvasElements[firstLayerIndex].style.filter;
-                        if (filter) {
-                            canvasElements[secondLayerIndex].style.filter = filter;
-                        }
-                    }
-                }
-            }
-            
-            // Принудительное обновление карты
-            map.updateSize();
-            map.renderSync();
-        } catch (error) {
-            console.error('[ERROR] Ошибка при синхронизации стилей:', error);
-        }
-    }
-    
-    /**
      * Установка режима отображения
      * @param {string} mode - режим отображения ('single', 'swipe', 'opacity')
      */
@@ -574,39 +516,52 @@ const MapModule = (function() {
         
         // Проверяем, есть ли два слоя для режимов сравнения
         if ((mode === 'swipe' || mode === 'opacity') && (!currentImageLayer || !secondImageLayer)) {
-            console.warn('Для режима сравнения необходимо выбрать два изображения');
-            alert('Для режима сравнения необходимо выбрать два изображения (изображение #1 и изображение #2)');
+            console.warn('Для режима сравнения рекомендуется выбрать два изображения');
             
-            // Возвращаемся к режиму одиночного изображения
+            // Показываем предупреждение, но не блокируем выбор режима
+            if (!currentImageLayer) {
+                alert('Для полноценного использования режима сравнения рекомендуется выбрать основное изображение');
             document.getElementById('display-mode').value = 'single';
             currentMode = 'single';
             return;
+            }
+            
+            // Если есть основное изображение, то позволяем использовать режим даже без второго
         }
         
         // Сначала сбросим состояние всех элементов
-        document.getElementById('swipe-container').style.display = 'none';
-        document.getElementById('vertical-swipe').classList.add('hidden');
+        const swipeContainer = document.getElementById('swipe-container');
+        const verticalSwipe = document.getElementById('vertical-swipe');
+        
+        // Скрываем оба контейнера по умолчанию
+        if (swipeContainer) swipeContainer.style.display = 'none';
+        if (verticalSwipe) verticalSwipe.classList.add('hidden');
         
         // Сбрасываем clip-path и другие стили на слоях изображений
         resetLayerStyles();
         
         if (mode === 'swipe') {
             // Настраиваем вертикальную шторку для режима swipe
-            if (currentImageLayer && secondImageLayer) {
+            if (currentImageLayer) {
                 console.log('[DEBUG] Настройка режима шторки');
                 
-                // Проверяем, что оба слоя видимы
+                // Убеждаемся, что основной слой виден
                 currentImageLayer.setVisible(true);
-                secondImageLayer.setVisible(true);
-                
-                // Устанавливаем полную непрозрачность
                 currentImageLayer.setOpacity(1);
+                
+                // Если есть второй слой, настраиваем его тоже
+                if (secondImageLayer) {
+                    secondImageLayer.setVisible(true);
                 secondImageLayer.setOpacity(1);
                 
-                // Синхронизируем стили между изображениями
-                syncStyles();
+                    // Больше не синхронизируем стили между изображениями
+                    // для возможности их независимой настройки
                 
                 setupSwipeMode();
+                } else {
+                    // Если второго слоя нет, просто показываем основной слой
+                    console.log('[DEBUG] Режим шторки с одним изображением');
+                }
             }
         } else if (mode === 'opacity') {
             // Для режима прозрачности
@@ -615,41 +570,60 @@ const MapModule = (function() {
             if (currentImageLayer) {
                 currentImageLayer.setVisible(true);
                 currentImageLayer.setOpacity(1);
-            }
             
+                // Добавляем управление прозрачностью только если есть второй слой
             if (secondImageLayer) {
                 secondImageLayer.setVisible(true);
                 // Устанавливаем прозрачность для второго слоя
                 secondImageLayer.setOpacity(0.5);
                 
-                // Синхронизируем стили между изображениями
-                syncStyles();
-                
-                // Добавляем возможность управления прозрачностью вторым слоем
+                    // Больше не синхронизируем стили между изображениями
+                    // для возможности их независимой настройки
+                    
+                    // Создаем элементы управления прозрачностью
+                    if (swipeContainer) {
+                        console.log('[DEBUG] Создание слайдера прозрачности');
+                        
+                        // Создаем слайдер для управления прозрачностью
                 const opacitySlider = document.createElement('input');
                 opacitySlider.type = 'range';
                 opacitySlider.min = '0';
                 opacitySlider.max = '1';
                 opacitySlider.step = '0.1';
                 opacitySlider.value = '0.5';
+                        opacitySlider.id = 'opacity-slider';
                 opacitySlider.style.width = '100%';
                 opacitySlider.style.margin = '10px 0';
                 
-                // Контейнер для слайдера
-                const sliderContainer = document.getElementById('swipe-container');
-                
-                // Очищаем контейнер
-                sliderContainer.innerHTML = '<div class="opacity-controls"><p>Прозрачность сравниваемого слоя:</p></div>';
-                sliderContainer.querySelector('.opacity-controls').appendChild(opacitySlider);
-                
-                // Показываем контейнер
-                sliderContainer.style.display = 'block';
+                        // Очищаем контейнер и добавляем новое содержимое
+                        swipeContainer.innerHTML = '';
+                        const opacityControls = document.createElement('div');
+                        opacityControls.className = 'opacity-controls';
+                        
+                        const label = document.createElement('p');
+                        label.textContent = 'Прозрачность сравниваемого слоя:';
+                        
+                        opacityControls.appendChild(label);
+                        opacityControls.appendChild(opacitySlider);
+                        swipeContainer.appendChild(opacityControls);
+                        
+                        // Показываем контейнер со слайдером
+                        swipeContainer.style.display = 'block';
                 
                 // Добавляем обработчик изменения прозрачности
                 opacitySlider.addEventListener('input', function() {
                     const opacity = parseFloat(this.value);
                     secondImageLayer.setOpacity(opacity);
                 });
+                        
+                        console.log('[DEBUG] Слайдер прозрачности создан и отображен');
+                    } else {
+                        console.warn('[WARN] Не найден контейнер для слайдера прозрачности');
+                    }
+                } else {
+                    // Если второго слоя нет, просто показываем основной слой
+                    console.log('[DEBUG] Режим прозрачности с одним изображением');
+                }
             }
         } else {
             // Для режима одиночного изображения
@@ -661,7 +635,9 @@ const MapModule = (function() {
             }
             
             if (secondImageLayer) {
-                secondImageLayer.setVisible(false);
+                // Теперь показываем второе изображение также в обычном режиме
+                secondImageLayer.setVisible(true);
+                secondImageLayer.setOpacity(1);
             }
         }
         
@@ -866,7 +842,7 @@ const MapModule = (function() {
     }
     
     /**
-     * Применяет настройки рендеринга к изображению
+     * Применяет настройки рендеринга к основному изображению
      * @param {Object} params - Параметры рендеринга (brightness, contrast, saturation и т.д.)
      */
     function setImageRenderParams(params) {
@@ -890,7 +866,7 @@ const MapModule = (function() {
             safeParams.sepia = Math.max(0, Math.min(1, params.sepia));
         }
         
-        console.log('[DEBUG] Применение фильтров с ограничениями:', safeParams);
+        console.log('[DEBUG] Применение фильтров к основному изображению:', safeParams);
         
         // Проверяем, является ли слой WebGLTile (используется для TIFF)
         const isWebGLTileLayer = currentImageLayer instanceof ol.layer.WebGLTile;
@@ -929,16 +905,71 @@ const MapModule = (function() {
                     console.log('[DEBUG] WebGLTile слой заменен для обновления стиля');
                 }
                 
-                // Делаем то же самое для второго слоя, если он есть и виден
-                if (secondImageLayer && secondImageLayer.getVisible() && secondImageLayer instanceof ol.layer.WebGLTile) {
-                    const oldSecondLayer = secondImageLayer;
-                    const secondSource = oldSecondLayer.getSource();
-                    
-                    const newSecondLayer = new ol.layer.WebGLTile({
-                        title: oldSecondLayer.get('title') || 'Спутниковое изображение (сравнение)',
-                        source: secondSource,
-                        baseLayer: oldSecondLayer.get('baseLayer'),
-                        visible: oldSecondLayer.getVisible(),
+                // Принудительное обновление карты
+                setTimeout(() => {
+                    map.updateSize();
+                    map.renderSync();
+                    console.log('[DEBUG] Карта принудительно обновлена после замены слоев');
+                }, 10);
+            } catch (error) {
+                console.error('[ERROR] Ошибка при обновлении WebGLTile слоя:', error);
+                
+                // Запасной вариант - используем CSS фильтры
+                applyCSS_Filters(safeParams, false);
+            }
+        } else {
+            // Для обычных слоев используем CSS фильтры
+            applyCSS_Filters(safeParams, false);
+        }
+        
+        // Сохраняем текущие параметры фильтров
+        firstImageParams = safeParams;
+    }
+    
+    /**
+     * Применяет настройки рендеринга ко второму (сравниваемому) изображению
+     * @param {Object} params - Параметры рендеринга (brightness, contrast, saturation и т.д.)
+     */
+    function setSecondImageRenderParams(params) {
+        if (!secondImageLayer) {
+            console.warn('Нет выбранного второго изображения для настройки. Пожалуйста, сначала выберите второе изображение.');
+            return;
+        }
+        
+        // Добавляем ограничения значений, чтобы избежать слишком ярких изображений
+        let safeParams = {
+            brightness: Math.max(-1.5, Math.min(0.7, params.brightness || 0)),
+            contrast: Math.max(-4, Math.min(4, params.contrast || 0)),
+            saturation: Math.max(-4, Math.min(4, params.saturation || 0))
+        };
+
+        // Добавляем другие параметры, если они есть, с ограничениями
+        if (params.hue !== undefined) {
+            safeParams.hue = Math.max(-180, Math.min(180, params.hue));
+        }
+        if (params.sepia !== undefined) {
+            safeParams.sepia = Math.max(0, Math.min(1, params.sepia));
+        }
+        
+        console.log('[DEBUG] Применение фильтров ко второму изображению:', safeParams);
+        
+        // Проверяем, является ли слой WebGLTile (используется для TIFF)
+        const isWebGLTileLayer = secondImageLayer instanceof ol.layer.WebGLTile;
+        
+        if (isWebGLTileLayer) {
+            // Для WebGLTile слоев применяем параметры напрямую через свойство style
+            try {
+                // Делаем копию текущего слоя перед изменением
+                const oldLayer = secondImageLayer;
+                // Получаем настройки и источник данных
+                const source = oldLayer.getSource();
+                
+                // Создаем новый слой с теми же параметрами, но обновленным стилем
+                const newLayer = new ol.layer.WebGLTile({
+                    title: oldLayer.get('title') || 'Спутниковое изображение (сравнение)',
+                    source: source,
+                    baseLayer: oldLayer.get('baseLayer'),
+                    visible: oldLayer.getVisible(),
                         style: {
                             brightness: safeParams.brightness,
                             contrast: safeParams.contrast,
@@ -948,13 +979,13 @@ const MapModule = (function() {
                         }
                     });
                     
-                    const secondLayerIndex = map.getLayers().getArray().indexOf(oldSecondLayer);
-                    if (secondLayerIndex >= 0) {
-                        map.getLayers().removeAt(secondLayerIndex);
-                        map.getLayers().insertAt(secondLayerIndex, newSecondLayer);
-                        secondImageLayer = newSecondLayer;
+                // Заменяем слой в карте
+                const layerIndex = map.getLayers().getArray().indexOf(oldLayer);
+                if (layerIndex >= 0) {
+                    map.getLayers().removeAt(layerIndex);
+                    map.getLayers().insertAt(layerIndex, newLayer);
+                    secondImageLayer = newLayer;
                         console.log('[DEBUG] Второй WebGLTile слой заменен для обновления стиля');
-                    }
                 }
                 
                 // Принудительное обновление карты
@@ -967,20 +998,15 @@ const MapModule = (function() {
                 console.error('[ERROR] Ошибка при обновлении WebGLTile слоя:', error);
                 
                 // Запасной вариант - используем CSS фильтры
-                applyCSS_Filters(safeParams);
+                applyCSS_Filters(safeParams, true);
             }
         } else {
             // Для обычных слоев используем CSS фильтры
-            applyCSS_Filters(safeParams);
+            applyCSS_Filters(safeParams, true);
         }
         
-        // Сохраняем текущие параметры фильтров
-        currentImageParams = safeParams;
-        
-        // Если мы в режиме сравнения, синхронизируем стили
-        if (currentMode === 'swipe' || currentMode === 'opacity') {
-            syncStyles();
-        }
+        // Сохраняем текущие параметры фильтров для второго изображения
+        secondImageParams = safeParams;
     }
     
     /**
@@ -1025,36 +1051,28 @@ const MapModule = (function() {
         // Применяем фильтры к слою
         if (filters.length > 0) {
             const filterString = filters.join(' ');
-            console.log('[DEBUG] Применяем CSS фильтры к изображению:', filterString);
+            console.log(`[DEBUG] Применяем CSS фильтры к ${isSecond ? "второму" : "основному"} изображению:`, filterString);
             
             try {
+                // Определяем, какой слой нужно настроить
+                const targetLayer = isSecond ? secondImageLayer : currentImageLayer;
+                
+                if (!targetLayer) {
+                    console.warn(`[WARN] ${isSecond ? "Второй" : "Основной"} слой не найден для применения фильтров`);
+                    return;
+                }
+                
                 // Получаем все HTML-элементы изображения
                 const canvasElements = map.getTargetElement().querySelectorAll('.ol-layer canvas');
                 
                 if (canvasElements && canvasElements.length > 0) {
-                    // Применяем фильтры к активному слою
-                    if (currentImageLayer) {
-                        // Находим индекс текущего слоя в массиве слоев карты
-                        const layerIndex = map.getLayers().getArray().indexOf(currentImageLayer);
+                    // Находим индекс нужного слоя в массиве слоев карты
+                    const layerIndex = map.getLayers().getArray().indexOf(targetLayer);
                         if (layerIndex >= 0 && canvasElements[layerIndex]) {
                             canvasElements[layerIndex].style.filter = filterString;
-                            console.log('[DEBUG] Фильтры применены к основному слою, индекс:', layerIndex);
+                        console.log(`[DEBUG] Фильтры применены к ${isSecond ? "второму" : "основному"} слою, индекс:`, layerIndex);
                         } else {
-                            // Запасной вариант - применить ко всем canvas
-                            canvasElements.forEach((canvas, i) => {
-                                canvas.style.filter = filterString;
-                                console.log('[DEBUG] Фильтры применены к canvas с индексом:', i);
-                            });
-                        }
-                    }
-                    
-                    // Если есть второй слой, применяем те же фильтры
-                    if (secondImageLayer && secondImageLayer.getVisible()) {
-                        const secondLayerIndex = map.getLayers().getArray().indexOf(secondImageLayer);
-                        if (secondLayerIndex >= 0 && canvasElements[secondLayerIndex]) {
-                            canvasElements[secondLayerIndex].style.filter = filterString;
-                            console.log('[DEBUG] Фильтры применены ко второму слою, индекс:', secondLayerIndex);
-                        }
+                        console.warn(`[WARN] Не найден canvas элемент для слоя с индексом ${layerIndex}`);
                     }
                 } else {
                     console.warn('[WARN] Не найдены canvas элементы слоев');
@@ -1064,7 +1082,7 @@ const MapModule = (function() {
             }
         }
         
-        // Принудительное обновление карты для обычных слоев
+        // Принудительное обновление карты
         map.render();
     }
     
@@ -1115,6 +1133,7 @@ const MapModule = (function() {
         setBaseLayer: setBaseLayer,
         setBackgroundColor: setBackgroundColor,
         setImageRenderParams: setImageRenderParams,
+        setSecondImageRenderParams: setSecondImageRenderParams,
         zoom: zoom,
         resetView: resetView,
         getMap: function() { return map; },
@@ -1132,8 +1151,7 @@ const MapModule = (function() {
         resetSecondImageLayer: function() { 
             console.log('[DEBUG] Сброс ссылки на второй слой изображения');
             secondImageLayer = null;
-        },
-        syncStyles: syncStyles
+        }
     };
 })();
 
