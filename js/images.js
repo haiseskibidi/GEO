@@ -1,6 +1,3 @@
-/**
- * Модуль для работы с изображениями ДЗЗ
- */
 const ImagesModule = (function() {
     let availableImages = [];
     let selectedImage = null;
@@ -10,7 +7,6 @@ const ImagesModule = (function() {
         console.log('Поиск изображений с параметрами:', params);
         
         return new Promise((resolve, reject) => {
-            // Загружаем JSON с информацией о снимках
             fetch('data/img/images.json')
                 .then(response => {
                     if (!response.ok) {
@@ -19,10 +15,7 @@ const ImagesModule = (function() {
                     return response.json();
                 })
                 .then(data => {
-                    // Получаем массив снимков из JSON
                     const realImages = data.images;
-
-                    // Фильтруем снимки по параметрам поиска
                     let filteredImages = realImages;
                     
                     if (params.dateFrom) {
@@ -47,7 +40,6 @@ const ImagesModule = (function() {
                 })
                 .catch(error => {
                     console.error('Ошибка при загрузке снимков:', error);
-                    // В случае ошибки возвращаем пустой массив
                     availableImages = [];
                     resolve([]);
                 });
@@ -120,7 +112,6 @@ const ImagesModule = (function() {
             });
         });
         
-        // Обновляем видимость кнопок удаления
         updateSelectedImageUI();
     }
     
@@ -150,7 +141,6 @@ const ImagesModule = (function() {
             item.classList.remove('selected');
             item.classList.remove('second-selected');
             
-            // Скрываем кнопку удаления на всех элементах
             const removeBtnContainer = item.querySelector('.remove-btn-container');
             if (removeBtnContainer) {
                 removeBtnContainer.style.display = 'none';
@@ -169,7 +159,6 @@ const ImagesModule = (function() {
             if (secondSelectedItem) {
                 secondSelectedItem.classList.add('second-selected');
                 
-                // Показываем кнопку удаления только для второго выбранного изображения
                 const removeBtnContainer = secondSelectedItem.querySelector('.remove-btn-container');
                 if (removeBtnContainer) {
                     removeBtnContainer.style.display = 'block';
@@ -178,9 +167,6 @@ const ImagesModule = (function() {
         }
     }
     
-    /**
-     * Удаляет второе изображение из сравнения
-     */
     function removeSecondImage() {
         console.log('Удаление второго изображения из сравнения');
         
@@ -189,10 +175,8 @@ const ImagesModule = (function() {
             return;
         }
         
-        // Сохраняем ссылку на текущий режим отображения перед удалением
         const currentDisplayMode = MapModule.getCurrentMode();
         
-        // Получаем слой второго изображения и удаляем его с карты
         const map = MapModule.getMap();
         const secondLayer = MapModule.getSecondImageLayer();
         
@@ -201,13 +185,10 @@ const ImagesModule = (function() {
             map.removeLayer(secondLayer);
         }
         
-        // Сбрасываем ссылку на второе изображение
         secondSelectedImage = null;
         
-        // Явно сообщаем модулю карты, что второй слой удален
         MapModule.resetSecondImageLayer();
         
-        // Переключаемся в режим одиночного изображения
         if (currentDisplayMode !== 'single') {
             const displayModeSelect = document.getElementById('display-mode');
             if (displayModeSelect) {
@@ -216,49 +197,35 @@ const ImagesModule = (function() {
             MapModule.setMode('single');
         }
         
-        // Обновляем UI
         updateSelectedImageUI();
         
         return true;
     }
     
-    /**
-     * Удаляет все выбранные изображения с карты
-     */
     function removeAllImages() {
         console.log('Удаление всех изображений с карты');
         
-        // Получаем карту
         const map = MapModule.getMap();
         
-        // Удаляем второе изображение, если оно выбрано
         if (secondSelectedImage) {
-            // Получаем второй слой и удаляем его с карты
             const secondLayer = MapModule.getSecondImageLayer();
             if (secondLayer) {
                 map.removeLayer(secondLayer);
             }
-            // Сбрасываем ссылку на второе изображение
             secondSelectedImage = null;
-            // Сообщаем модулю карты, что второй слой удален
             MapModule.resetSecondImageLayer();
         }
         
-        // Удаляем основное изображение, если оно выбрано
         if (selectedImage) {
-            // Так как у нас нет прямого метода для получения основного слоя,
-            // мы просто сбрасываем ссылку на изображение в нашем модуле
             selectedImage = null;
         }
         
-        // Переключаемся в режим одиночного изображения
         const displayModeSelect = document.getElementById('display-mode');
         if (displayModeSelect) {
             displayModeSelect.value = 'single';
         }
         MapModule.setMode('single');
         
-        // Обновляем UI
         updateSelectedImageUI();
         
         return true;

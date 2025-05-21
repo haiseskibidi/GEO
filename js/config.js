@@ -60,7 +60,6 @@ const config = {
     }
 };
 
-// Флаг успешной загрузки конфигурации
 window.configLoaded = true;
 console.log('[DEBUG] Конфигурация успешно загружена');
 

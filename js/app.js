@@ -13,7 +13,7 @@ const App = (function() {
         console.log('[DEBUG] Установка дат по умолчанию...');
         
         const today = new Date();
-        const startDate = new Date(2015, 0, 1); // 1 января 2015 года
+        const startDate = new Date(2015, 0, 1);     
         
         const formatDate = (date) => {
             const year = date.getFullYear();
@@ -35,7 +35,6 @@ const App = (function() {
             return;
         }
         
-        // Устанавливаем даты с проверкой
         dateFromElement.value = formatDate(startDate);
         dateToElement.value = formatDate(today);
         
